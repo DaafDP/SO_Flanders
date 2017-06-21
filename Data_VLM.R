@@ -33,7 +33,7 @@ length(setdiff(Production$NR_LANDBOUWER_FICT, Production$NR_EXPLOITANT_FICT))
 length(setdiff(Stables$NR_LANDBOUWER_FICT, Stables$NR_EXPLOITANT_FICT)) 
         #137 non-matches farmer and operator
 
-#3. Reshape Stable data to wide format -> 1 exploitation per row
+#3. Data processing
 library(tidyr)
 
 #Only keep columns that are strictly necessary
@@ -43,7 +43,7 @@ SelCols <- c("CO_NIS_FGEM_EXPLOITATIE", "NR_LANDBOUWER_FICT", "NR_EXPLOITATIE_FI
              "OMS_DIERGROEP","AAN_STANDPLAATSEN")
 Stables_Short <- Stables[,SelCols]
 
-#Filter all observations with AAN_STANDPLAATSEN 0 of NA
+#Filter out all observations with AAN_STANDPLAATSEN 0 of NA
 Stables_Short <- subset(Stables_Short, AAN_STANDPLAATSEN > 0)
 
 #Sum number of permitted animals for same exploitations and animal type
@@ -78,4 +78,9 @@ StablesWide$Name <- paste("s", c(1:nrow(StablesWide)), sep="")
 length(unique(StablesWide$Exploitation)) #23422 exploitations
 length(unique(StablesWide$Farmer)) #20721 farmers
 
+#Replace NA by zero
+StablesWide[is.na(StablesWide)] <- 0
+
+#4. Save resulting dataframe as 
+write.csv(StablesWide, "StablesWide.csv", row.names = FALSE)
 
