@@ -1,4 +1,5 @@
 ##Random coupling of VLM data to locations of stables, based on NIS codes
+rm(list=ls())
 
 #1.Loading Data
 StablesWide <- read.csv("StablesWide.csv")
@@ -25,33 +26,37 @@ NIS <- unique(Exploitations$NIS)
 #Two random picks (different seeds)
 sample1 <- 
         sapply(NIS, function(x) {
-        SelectedExploitations <- subset(Exploitations, NIS==x)
-        SelectedLocations <- subset(Locations, NISCODE==x)
-        set.seed(1)
-        #If available locations bigger than exploitations, random pick without replacement:
-        if (nrow(SelectedLocations) >= nrow(SelectedExploitations)){
-                index <- sample(1:nrow(SelectedLocations), nrow(SelectedExploitations))
-                #print(index)
-        }
-        #Else: pick random without replacement until locations are 'empty', than take other 
-        #picks from locations with replacement
-        else {   print(x)
-                 ind <- sample(1:nrow(SelectedLocations), nrow(SelectedLocations))
-                 ex <- sample(1:nrow(SelectedLocations),
-                             (nrow(SelectedExploitations)-nrow(SelectedLocations)), replace=TRUE)
-                 index <- c(ind, ex)
-                 print(index)
-        }
-        return(SelectedLocations[index,1:2])
-})
+                print(x)
+                SelectedExploitations <- subset(Exploitations, NIS==x)
+                SelectedLocations <- subset(Locations, NISCODE==x)
+                set.seed(1)
+                #If available locations bigger than exploitations, random pick without replacement:
+                if (nrow(SelectedLocations) >= nrow(SelectedExploitations)){
+                        index <- sample(1:nrow(SelectedLocations), nrow(SelectedExploitations))
+                        #print(index)
+                }
+                #Else: pick random without replacement until locations are 'empty', than take other 
+                #picks from locations with replacement
+                else {  print(x)
+                        ind <- sample(1:nrow(SelectedLocations), nrow(SelectedLocations))
+                        ex <- sample(1:nrow(SelectedLocations),
+                                     (nrow(SelectedExploitations)-nrow(SelectedLocations)), replace=TRUE)
+                        index <- c(ind, ex)
+                        print(index)
+                }
+                return(SelectedLocations[index,1:2])
+        })
 
-Exploitations_seed1 <- data.frame(matrix(unlist(sample1), nrow=nrow(Exploitations), byrow=T))
+sample1 <- t(sample1)
+
+Exploitations_seed1 <- data.frame(matrix(unlist(sample1), nrow=nrow(Exploitations), byrow=F))
 colnames(Exploitations_seed1) <- c("X", "Y")
 Exploitations_seed1 <- as.data.frame(cbind(Exploitations_seed1, Exploitations))
 
 
 sample2 <- 
         sapply(NIS, function(x) {
+                print(x)
                 SelectedExploitations <- subset(Exploitations, NIS==x)
                 SelectedLocations <- subset(Locations, NISCODE==x)
                 set.seed(2)
@@ -71,8 +76,9 @@ sample2 <-
                 }
                 return(SelectedLocations[index,1:2])
         })
+sample2 <- t(sample2)
 
-Exploitations_seed2 <- data.frame(matrix(unlist(sample2), nrow=nrow(Exploitations), byrow=T))
+Exploitations_seed2 <- data.frame(matrix(unlist(sample2), nrow=nrow(Exploitations), byrow=F))
 colnames(Exploitations_seed2) <- c("X", "Y")
 Exploitations_seed2 <- as.data.frame(cbind(Exploitations_seed2, Exploitations))
 
