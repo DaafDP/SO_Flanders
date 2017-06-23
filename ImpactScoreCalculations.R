@@ -1,18 +1,14 @@
-##Impact Score calculations for all exploitations
+##Impact Score calculations for all locations
 rm(list=ls())
 
 #1. Loading data
-Stables_seed1 <- read.csv("StablesS1.csv")
-Stables_seed2 <- read.csv("StablesS2.csv")
+Locations <- read.csv("LocationStables.csv")
 
 Receptor <- read.delim("C:/Users/ddpue/Documents/GPBV Flanders/R/GPBVFlanders/Receptor.txt")
 Hoedje <- read.csv("~/Regional Model/SpatialOptimization  GPBV Flanders/dataHoedje.csv")
 
-#2. Sources (two seeds): unique exploitations/pairs of coordinates
-Sources1 <- unique(Stables_seed1[,c("Exploitation", "X", "Y")])
-Sources2 <- unique(Stables_seed2[,c("Exploitation", "X", "Y")])
-
-Sources1$nr <- Sources2$nr <- 1:nrow(Sources1)
+#2.Number locations
+Locations$nr <- 1:nrow(Locations)
 
 #3. Hoedje with seperate tables for Dry deposition and wet deposition
 X <- c(-199:200) * 100
@@ -27,9 +23,9 @@ rownames(hoedjeND) <- Y
 colnames(hoedjeND) <- X
 
 #3.Impact indicator calculations
-Scores1 <- apply(Sources1, 1, function(x)
+Scores <- apply(Locations, 1, function(x)
 {
-        print(x[4])
+        print(x[15])
         impacttable <- as.data.frame(matrix(ncol=9, nrow=nrow(Receptor)))
         colnames(impacttable) <- c("ID", "dep", "CL", "Vd", "IS", "X", "Y", "DD", "ND")
         impacttable$ID <- Receptor$ID
@@ -37,8 +33,8 @@ Scores1 <- apply(Sources1, 1, function(x)
         impacttable$Vd <- Receptor$Vd
         impacttable$TND <- Receptor$TND
         #Convert to 'hoedje' coordinates
-        impacttable$X <- Receptor$X - x[2]
-        impacttable$Y <- Receptor$Y - x[3]
+        impacttable$X <- Receptor$X - as.numeric(x[1])
+        impacttable$Y <- Receptor$Y - as.numeric(x[2])
         #Round to 100m 
         impacttable$X <- round(impacttable$X/100)*100
         impacttable$Y <- round(impacttable$Y/100)*100
