@@ -6,13 +6,13 @@ StablesWide <- read.csv("StablesWide.csv")
 Locations <- read.csv("LocationStables.csv")
 
 #2. Cleaning data.frame Locations
-Locations <- Locations[,c("X", "Y", "NISCODE", "NAAM")]
+Locations <- Locations[,c("X", "Y", "NISCODE", "NAAM", "ADS", "SS")]
 
 #3.Unique Exploitations For which location is sought
 Exploitations <- StablesWide[,c("NIS", "Exploitation")]
 Exploitations <- unique(Exploitations)
 
-#3. Remove Walloon and Brussels locations from VLM dataset
+#4. Remove Walloon and Brussels locations from VLM dataset
 NIS <- unique(Exploitations$NIS)
 length(NIS) #315 municipalities in VLM dataset
 length(unique(Locations$NISCODE)) #305 municipalities in locations dataset
@@ -44,13 +44,13 @@ sample1 <-
                         index <- c(ind, ex)
                         print(index)
                 }
-                return(SelectedLocations[index,1:2])
+                return(SelectedLocations[index,c("X", "Y", "ADS", "SS")])
         })
 
 sample1 <- t(sample1)
 
 Exploitations_seed1 <- data.frame(matrix(unlist(sample1), nrow=nrow(Exploitations), byrow=F))
-colnames(Exploitations_seed1) <- c("X", "Y")
+colnames(Exploitations_seed1) <- c("X", "Y", "ADS", "SS")
 Exploitations_seed1 <- as.data.frame(cbind(Exploitations_seed1, Exploitations))
 
 
@@ -74,20 +74,18 @@ sample2 <-
                         index <- c(ind, ex)
                         print(index)
                 }
-                return(SelectedLocations[index,1:2])
+                return(SelectedLocations[index,c("X", "Y", "ADS", "SS")])
         })
 sample2 <- t(sample2)
 
 Exploitations_seed2 <- data.frame(matrix(unlist(sample2), nrow=nrow(Exploitations), byrow=F))
-colnames(Exploitations_seed2) <- c("X", "Y")
+colnames(Exploitations_seed2) <- c("X", "Y", "ADS", "SS")
 Exploitations_seed2 <- as.data.frame(cbind(Exploitations_seed2, Exploitations))
 
-
-
 #6. Couple X and Y coordinates to stables dataframe, coupling based on exploitation number
-Stables_seed1 <- merge(StablesWide, Exploitations_seed1[,c("X","Y", "Exploitation")], 
+Stables_seed1 <- merge(StablesWide, Exploitations_seed1[,c("X","Y", "Exploitation", "ADS", "SS")], 
                        by ="Exploitation")
-Stables_seed2 <- merge(StablesWide, Exploitations_seed2[,c("X","Y", "Exploitation")], 
+Stables_seed2 <- merge(StablesWide, Exploitations_seed2[,c("X","Y", "Exploitation", "ADS", "SS")], 
                        by ="Exploitation")
 
 #7. Rename the observations in the dataset

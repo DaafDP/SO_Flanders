@@ -60,3 +60,10 @@ Scores <- apply(Locations, 1, function(x)
         
 })
 
+Scores <- t(Scores)
+Scores <- as.data.frame(Scores)
+
+Locations$ADS <- Scores$V1
+Locations$SS <- Scores$V2
+
+write.csv(Locations, "LocationStables.csv")

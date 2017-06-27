@@ -1,4 +1,5 @@
 ##Processing of VLM data livestock and animal housing Flanders
+rm(list=ls())
 
 #1. Loading Data
 Production <- read.csv(file="Productie.csv")
@@ -39,7 +40,7 @@ library(tidyr)
 #Only keep columns that are strictly necessary
 #OMS DIERSOORT instead of CODE_DIERSOORT (more detail, eg milk production)
 SelCols <- c("CO_NIS_FGEM_EXPLOITATIE", "NR_LANDBOUWER_FICT", "NR_EXPLOITATIE_FICT",
-             "OMS_DIERSOORT", "CODE_STALTYPE", "AAN_BEZETTING_STALTYPE",
+             "OMS_DIERSOORT", "CODE_DIERSOORT", "CODE_STALTYPE", "AAN_BEZETTING_STALTYPE",
              "OMS_DIERGROEP","AAN_STANDPLAATSEN")
 Stables_Short <- Stables[,SelCols]
 
@@ -51,11 +52,13 @@ StablesAggregated <- aggregate(Stables_Short$AAN_STANDPLAATSEN,
                            by=list(Stables_Short$CO_NIS_FGEM_EXPLOITATIE,
                                    Stables_Short$NR_LANDBOUWER_FICT, 
                                    Stables_Short$NR_EXPLOITATIE_FICT, 
-                                   Stables_Short$OMS_DIERSOORT,
+                                   Stables_Short$CODE_DIERSOORT,
                                    Stables_Short$CODE_STALTYPE), FUN=sum)
 
 colnames(StablesAggregated) <- c("NIS", "Farmer", "Exploitation",
                                  "AnimalType", "StableType", "Capacity")
+
+StablesAggregated$AnimalType <- paste("a", StablesAggregated$AnimalType, sep="")
 
 #CodeBooks
 NIS <- cbind(unique(Stables$CO_NIS_FGEM_EXPLOITATIE), as.character(unique(Stables$GEMEENTE_EXPLOITATIE)))
