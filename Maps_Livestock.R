@@ -1,41 +1,60 @@
 ##Maps of Flanders (type of animals, air scrubbers, ..)
 rm(list=ls())
 
-#1. Loading data
+#Loading data
 EMAV <- read.csv("EMAV.csv")
 Stables1 <- read.csv("StablesS1.csv")
 Stables2 <- read.csv("StablesS2.csv")
 
-#2. Different Animal Groups
+#Different Animal Groups
 AnimalGroups <- as.data.frame(unique(EMAV[,c("DIERCODE", "OMS_DIERGROEP")]))
 AnimalGroups <- AnimalGroups[-c(40:42),]
 
-#3. Loading shapefile NIS/Remove all unnesscary columns
+#Loading shapefile NIS/Remove all unnesscary columns
 library(rgdal)
 library(sp)
+library(rgeos)
 gem <- readOGR(dsn="C:/Users/ddpue/Documents/GPBV Flanders/GIS/Referentiebestanden Vlaams Gewest",
                layer="Refgem")
-plot(gem)
+gems <- gSimplify(gem, tol=10, topologyPreserve = TRUE)
+gem <- SpatialPolygonsDataFrame(gems, data=gem@data)
+rm(gems)
+
 gem@data[, c("SCmean", "TISmean", "emsum", "emmean", "emSC", "emTIS", "emTISnorm")] <- NULL
 
 
-#4. Dataframe with frequency of stable per municipality
+# Dataframe with frequency of stable per municipality
 NISStables <- Stables1[,c("NIS", "StableType")]
 NISStables <- as.data.frame(table(Stables1[,c("NIS", "StableType")]))
 
-#5. Select systems with air scrubber (S 1, S 2, S 3)
+NISStables <- subset(NISStables, Freq > 0)
+
+####Map Air Scrubbers (472 in total)
+
+# Select systems with air scrubber (S 1, S 2, S 3)
 AirScrubbers <- subset(NISStables, Freq > 0)
 AirScrubbers <- subset(AirScrubbers, grepl("S ", StableType) )
 
+# library(tidyr)
+AirScrub_wide <- spread(AirScrubbers, key=StableType, value=Freq)
+AirScrub_wide[is.na(AirScrub_wide)] <- 0
+# 
+# #Write CSV for input qgis
+# write.csv(AirScrub_wide, "AirScrubbers.csv")
+
 #Summate all air scrubbers per municipality
 AirScrubbers <- aggregate(AirScrubbers$Freq,by=list(AirScrubbers$NIS), sum)
-colnames(AirScrubbers) <- c("NIS", "freq")
+AirScrubbers$ScrubberType <- strtrim(AirScrubbers$ScrubberType, 3)
+# AirScrubbers <- aggregate(AirScrubbers, by = list(AirScrubbers$StableType), sum)
+colnames(AirScrubbers) <- c("NIS","freq")
  
-#6. Couple with attribute table gem
+# Couple with attribute table gem
 gem@data <- data.frame(gem@data, AirScrubbers[match(gem@data[,"NISCODE"], AirScrubbers[,"NIS"]),
-gem@data$NIS <- NULL                                              ])
+                                              ])
+gem@data$NIS <- NULL
+
         
-#7.Plot air scrubbers on map
+#.Plot air scrubbers on map
 library("maptools")
 library("ggplot2")
 library("plyr")
@@ -51,6 +70,150 @@ pal <- brewer.pal(5, "Reds")
 ggplot(gem.df)+
         aes(long, lat, group=group, fill=freq)+
         geom_polygon() +
-        geom_path(color="white")+
+        geom_path(color="black")+
         coord_equal()+
-        scale_color_manual(values=pal)
+        scale_fill_gradient(
+                low="white", high="darkred", 
+                name="# Air Scrubbers")
+
+#Map 3 types of air scrubbers
+AirScrubber_Type <- cbind(as.numeric(as.character(AirScrub_wide$NIS)), AirScrub_wide$`S 1 MENGM`+AirScrub_wide$`S 1 STALM`)
+AirScrubber_Type <- as.data.frame(AirScrubber_Type)
+AirScrubber_Type$S2 <- AirScrub_wide$`S 2 MENGM` + AirScrub_wide$`S 2 STALM`
+AirScrubber_Type$S3 <- AirScrub_wide$`S 3 STALM` + AirScrub_wide$`S 3 MENGM`
+
+colnames(AirScrubber_Type) <- c("NIS", "S1", "S2", "S3")
+
+gem@data <- data.frame(gem@data, AirScrubber_Type[match(gem@data[,"NISCODE"], 
+                                                        AirScrubber_Type[,"NIS"]),
+                                                  ])
+
+gem@data$id <- rownames(gem@data)
+gem.points <- fortify(gem, region="id")
+gem.df <- join(gem.points, gem@data, by ="id")
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=S1)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", 
+                name="# Biological Air Scrubbers")
+
+####Map Animal Categories (cattle, pigs, poultry, Horses, Horses)
+Animals <- Stables1[,c("NIS", intersect(colnames(Stables1), AnimalGroups$DIERCODE))]
+
+##Cows
+CowIndex <- as.character(AnimalGroups$DIERCODE[which(AnimalGroups$OMS_DIERGROEP == "Runderen")])
+Cows <- Animals[,c("NIS", CowIndex)]
+Cows <- aggregate(Cows[,CowIndex], by=list(Cows$NIS), sum)
+
+Cows$CowsTotal <- rowSums(Cows[,CowIndex])
+sum(Cows$CowsTotal) #1998233
+gem@data <- data.frame(gem@data, Cows[match(gem@data[,"NISCODE"], Cows[,1]),])
+
+gem@data$id <- rownames(gem@data)
+gem.points <- fortify(gem, region="id")
+gem.df <- join(gem.points, gem@data, by ="id")
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=CowsTotal)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", name="cows"
+                )
+
+##Pigs
+PigIndex <- as.character(AnimalGroups$DIERCODE[which(AnimalGroups$OMS_DIERGROEP == "Varkens")])
+PigIndex <- intersect(PigIndex, colnames(Animals))
+Pigs <- Animals[,c("NIS", PigIndex)]
+Pigs <- aggregate(Pigs[,PigIndex], by=list(Pigs$NIS), sum)
+
+Pigs$PigsTotal <- rowSums(Pigs[,PigIndex])
+sum(Pigs$PigsTotal) #8590512
+gem@data <- data.frame(gem@data, Pigs[match(gem@data[,"NISCODE"], Pigs[,1]),])
+
+gem@data$id <- rownames(gem@data)
+gem.points <- fortify(gem, region="id")
+gem.df <- join(gem.points, gem@data, by ="id")
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=PigsTotal)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", name="Pigs"
+        )
+
+##Poultry
+PoultryIndex <- as.character(AnimalGroups$DIERCODE[which(AnimalGroups$OMS_DIERGROEP == "Pluimvee")])
+PoultryIndex <- intersect(PoultryIndex, colnames(Animals))
+Poultry <- Animals[,c("NIS", PoultryIndex)]
+Poultry <- aggregate(Poultry[,PoultryIndex], by=list(Poultry$NIS), sum)
+
+Poultry$PoultryTotal <- rowSums(Poultry[,PoultryIndex])
+sum(Poultry$PoultryTotal) #46667608
+gem@data <- data.frame(gem@data, Poultry[match(gem@data[,"NISCODE"], Poultry[,1]),])
+
+gem@data$id <- rownames(gem@data)
+gem.points <- fortify(gem, region="id")
+gem.df <- join(gem.points, gem@data, by ="id")
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=PoultryTotal)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", name="Poultry"
+        )
+
+##Horses
+HorsesIndex <- as.character(AnimalGroups$DIERCODE[which(AnimalGroups$OMS_DIERGROEP == "Paarden")])
+HorsesIndex <- intersect(HorsesIndex, colnames(Animals))
+Horses <- Animals[,c("NIS", HorsesIndex)]
+Horses <- aggregate(Horses[,HorsesIndex], by=list(Horses$NIS), sum)
+
+Horses$HorsesTotal <- rowSums(Horses[,HorsesIndex])
+sum(Horses$HorsesTotal) #79316
+gem@data <- data.frame(gem@data, Horses[match(gem@data[,"NISCODE"], Horses[,1]),])
+
+gem@data$id <- rownames(gem@data)
+gem.points <- fortify(gem, region="id")
+gem.df <- join(gem.points, gem@data, by ="id")
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=HorsesTotal)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", name="Horses"
+        )
+
+##Other
+OtherIndex <- as.character(AnimalGroups$DIERCODE[which(AnimalGroups$OMS_DIERGROEP == "Andere")])
+OtherIndex <- intersect(OtherIndex, colnames(Animals))
+Other <- Animals[,c("NIS", OtherIndex)]
+Other <- aggregate(Other[,OtherIndex], by=list(Other$NIS), sum)
+
+Other$OtherTotal <- rowSums(Other[,OtherIndex])
+sum(Other$OtherTotal) #307097
+gem@data <- data.frame(gem@data, Other[match(gem@data[,"NISCODE"], Other[,1]),])
+
+gem@data$id <- rownames(gem@data)
+gem.points <- fortify(gem, region="id")
+gem.df <- join(gem.points, gem@data, by ="id")
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=OtherTotal)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", name="Other"
+        )
