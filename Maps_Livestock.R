@@ -1,5 +1,6 @@
 ##Maps of Flanders (type of animals, air scrubbers, ..)
 rm(list=ls())
+dev.off()
 
 #Loading data
 EMAV <- read.csv("EMAV.csv")
@@ -35,16 +36,9 @@ NISStables <- subset(NISStables, Freq > 0)
 AirScrubbers <- subset(NISStables, Freq > 0)
 AirScrubbers <- subset(AirScrubbers, grepl("S ", StableType) )
 
-# library(tidyr)
-AirScrub_wide <- spread(AirScrubbers, key=StableType, value=Freq)
-AirScrub_wide[is.na(AirScrub_wide)] <- 0
-# 
-# #Write CSV for input qgis
-# write.csv(AirScrub_wide, "AirScrubbers.csv")
-
 #Summate all air scrubbers per municipality
 AirScrubbers <- aggregate(AirScrubbers$Freq,by=list(AirScrubbers$NIS), sum)
-AirScrubbers$ScrubberType <- strtrim(AirScrubbers$ScrubberType, 3)
+#AirScrubbers$ScrubberType <- strtrim(AirScrubbers$ScrubberType, 3)
 # AirScrubbers <- aggregate(AirScrubbers, by = list(AirScrubbers$StableType), sum)
 colnames(AirScrubbers) <- c("NIS","freq")
  
@@ -52,6 +46,8 @@ colnames(AirScrubbers) <- c("NIS","freq")
 gem@data <- data.frame(gem@data, AirScrubbers[match(gem@data[,"NISCODE"], AirScrubbers[,"NIS"]),
                                               ])
 gem@data$NIS <- NULL
+gem@data[is.na(gem@data)] <- 0
+
 
         
 #.Plot air scrubbers on map
@@ -62,6 +58,7 @@ library("plyr")
 gem@data$id <- rownames(gem@data)
 gem.points <- fortify(gem, region="id")
 gem.df <- join(gem.points, gem@data, by ="id")
+
 
 #palette 
 library(RColorBrewer)
@@ -76,30 +73,37 @@ ggplot(gem.df)+
                 low="white", high="darkred", 
                 name="# Air Scrubbers")
 
-#Map 3 types of air scrubbers
-AirScrubber_Type <- cbind(as.numeric(as.character(AirScrub_wide$NIS)), AirScrub_wide$`S 1 MENGM`+AirScrub_wide$`S 1 STALM`)
-AirScrubber_Type <- as.data.frame(AirScrubber_Type)
-AirScrubber_Type$S2 <- AirScrub_wide$`S 2 MENGM` + AirScrub_wide$`S 2 STALM`
-AirScrubber_Type$S3 <- AirScrub_wide$`S 3 STALM` + AirScrub_wide$`S 3 MENGM`
-
-colnames(AirScrubber_Type) <- c("NIS", "S1", "S2", "S3")
-
-gem@data <- data.frame(gem@data, AirScrubber_Type[match(gem@data[,"NISCODE"], 
-                                                        AirScrubber_Type[,"NIS"]),
-                                                  ])
-
-gem@data$id <- rownames(gem@data)
-gem.points <- fortify(gem, region="id")
-gem.df <- join(gem.points, gem@data, by ="id")
+#Map 3 types of air scrubbers (already in shapefile - QGIS)
 
 ggplot(gem.df)+
-        aes(long, lat, group=group, fill=S1)+
+        aes(long, lat, group=group, fill=AS_bio)+
         geom_polygon() +
         geom_path(color="black")+
         coord_equal()+
         scale_fill_gradient(
                 low="white", high="darkred", 
-                name="# Biological Air Scrubbers")
+                name="# Biological \n Air Scrubbers",
+                breaks=seq(from=0, to=12, by=2),
+                label=seq(from=0, to=12, by=2))
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=AS_chem)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", 
+                name="# Chemical \n Air Scrubbers", 
+                label=c(0,2,4,6,8))
+
+ggplot(gem.df)+
+        aes(long, lat, group=group, fill=biobed)+
+        geom_polygon() +
+        geom_path(color="black")+
+        coord_equal()+
+        scale_fill_gradient(
+                low="white", high="darkred", 
+                name="# Biobeds")
 
 ####Map Animal Categories (cattle, pigs, poultry, Horses, Horses)
 Animals <- Stables1[,c("NIS", intersect(colnames(Stables1), AnimalGroups$DIERCODE))]
