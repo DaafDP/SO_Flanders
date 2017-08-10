@@ -4,7 +4,6 @@ rm(list=ls())
 
 #Loading data (pick seed 1 or 2)
 EMAV <- read.csv("EMAV.csv")
-EMAV  <- EMAV[-c(160:166),]
 Stables <- read.csv("StablesS1.csv")
 #Stables <- read.csv("StablesS2.csv")
 
@@ -14,12 +13,13 @@ library(reshape2)
 igdx("C:/GAMS/win64/24.7/")
 
 #pSourceLocation(sSource, sCoordinates)
-Sources <- Stables[c("Exploitation","NIS", "Farmer", "StableType", "X", "Y",
+Sources <- Stables[c("ID", "Exploitation","NIS", "Farmer", "StableType", "X", "Y",
                        "ADS", "SS")]
 
-Sources$Nr <- paste("s", c(1:nrow(Sources)), sep="")
+Sources$Nr <- paste("s", Sources$ID, sep="")
 Sources$StableType <- gsub(" ", "_", Sources$StableType)
 Sources$StableType <- gsub(".", "_", Sources$StableType, fixed=TRUE)
+Sources$StableType <- gsub("-", "_", Sources$StableType, fixed=TRUE)
 
 
 SourceLocation <- Sources[c("Nr", "X", "Y")]
@@ -63,6 +63,7 @@ attr(Animals, "domains") <- c("sSource, sAnimalCategory")
 EmissionFactor<- EMAV[c("DIERCODE", "STALCODE", "Emissiefactor")]
 EmissionFactor$STALCODE <- gsub(" ", "_", EmissionFactor$STALCODE)
 EmissionFactor$STALCODE <- gsub(".", "_", EmissionFactor$STALCODE,  fixed = TRUE)
+EmissionFactor$STALCODE <- gsub("-", "_", EmissionFactor$STALCODE, fixed= TRUE)
 
 #Air Scrubber and "GEEN"
 EF_Other <- read.csv(file = "EmissieOverig.csv")
@@ -74,7 +75,7 @@ EmissionFactor$j <- as.factor(EmissionFactor$j)
 EmissionFactor$value <- as.numeric(as.character((EmissionFactor$value)))
 attr(EmissionFactor, "symName") <- "pEmissionFactor"
 attr(EmissionFactor, "domains") <- c("sAnimalCategory", "sStableType")
-EmissionFactor$value[is.na(EmissionFactor$value)] <- 5.5
+#EmissionFactor$value[is.na(EmissionFactor$value)] <- 5.5
 
 #Sets
 Source <- data.frame(SourceImpact$i)
