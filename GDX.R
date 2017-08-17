@@ -4,7 +4,7 @@ rm(list=ls())
 
 #Loading data (pick seed 1 or 2)
 EMAV <- read.csv("EMAV.csv")
-Stables <- read.csv("StablesS1.csv")
+Stables <- read.csv("StablesS2.csv")
 #Stables <- read.csv("StablesS2.csv")
 
 #Packages and GAMS directory
@@ -13,51 +13,79 @@ library(reshape2)
 igdx("C:/GAMS/win64/24.7/")
 
 #pSourceLocation(sSource, sCoordinates)
-Sources <- Stables[c("ID", "Exploitation","NIS", "Farmer", "StableType", "X", "Y",
+Sources <- Stables[c("Exploitation","NIS", "Farmer", "StableType", "X", "Y",
                        "ADS", "SS")]
-
-Sources$Nr <- paste("s", Sources$ID, sep="")
+Sources$Nr <- paste("s", c(1:nrow(Sources)), sep="")
+Sources$Exploitation <- paste("ex", Sources$Exploitation, sep="")
+Sources$Farmer <- paste("f", Sources$Farmer, sep="")
+Sources$NIS <- paste("n", Sources$NIS, sep="")
 Sources$StableType <- gsub(" ", "_", Sources$StableType)
 Sources$StableType <- gsub(".", "_", Sources$StableType, fixed=TRUE)
 Sources$StableType <- gsub("-", "_", Sources$StableType, fixed=TRUE)
+Sources[Sources$StableType == "",'StableType'] <- "GEEN"
 
+Location <- Sources[c("Exploitation", "X", "Y")]
+Location <- unique(Location)
+Location <- melt(Location, id="Exploitation")
+colnames(Location) <- c("i", "j", "value")
+Location$i <- as.factor(Location$i)
+Location$j <- as.factor(Location$j)
+attr(Location, "symName") <- "pSourceLocation"
+attr(Location, "domains") <- c("sExploitation", "sCoordinates")
 
-SourceLocation <- Sources[c("Nr", "X", "Y")]
-SourceLocation <- melt(SourceLocation)
-colnames(SourceLocation) <- c("i", "j", "value")
-SourceLocation$i <- as.factor(SourceLocation$i)
-SourceLocation$j <- as.factor(SourceLocation$j)
-attr(SourceLocation, "symName") <- "pSourceLocation"
-attr(SourceLocation, "domains") <- c("sSource", "sCoordinates")
+#pLocationImpact(sSource, sImpactScores)
+LocationImpact <- Sources[c("Exploitation", "ADS", "SS")]
+LocationImpact <- unique(LocationImpact)
+LocationImpact <- melt(LocationImpact, id="Exploitation")
+colnames(LocationImpact) <- c("i", "j", "value")
+LocationImpact$i <- as.factor(LocationImpact$i)
+LocationImpact$j <- as.factor(LocationImpact$j)
+attr(LocationImpact, "symName") <- "pLocationImpact"
+attr(LocationImpact, "domains") <- c("sExploitation", "sImpactScores")
 
-#pSourceImpact(sSource, sImpactScores )
-SourceImpact <- Sources[c("Nr", "ADS", "SS")]
-SourceImpact <- melt(SourceImpact)
-colnames(SourceImpact) <- c("i", "j", "value")
-SourceImpact$i <- as.factor(SourceImpact$i)
-SourceImpact$j <- as.factor(SourceImpact$j)
-attr(SourceImpact, "symName") <- "pSourceImpact"
-attr(SourceImpact, "domains") <- c("sSource", "sImpactScores")
+#Multidimensional set with all id characteristics
+sID <- Sources[c("Nr", "Exploitation", "NIS", "Farmer", "StableType")]
+colnames(sID) <- c("i", "j", "k", "l", "m")
+sID <- as.data.frame(apply(sID, 2, function(x){
+        as.factor(x)
+}))
+attr(sID, "symName") <- "sID"
+attr(sID, "domains") <- c("sStable", "sExploitation", "sNIS", "sFarmer", "sStableType")
 
-#pSourceID(sSource, sStableType, sID)
-SourceID <- Sources[c("Nr", "Exploitation", "NIS", "Farmer", "StableType")]
-SourceID <- melt(SourceID, id =c("Nr", "StableType"))
-colnames(SourceID) <- c("i", "j", "k", "value")
-SourceID$i <- as.factor(SourceID$i)
-SourceID$j <- as.factor(SourceID$j)
-SourceID$k <- as.factor(SourceID$k)
-attr(SourceID, "symName") <- "pSourceID"
-attr(SourceID, "domains") <- c("sSource", "sStableType", "sID")
+#individual sets
+Stable <- as.data.frame(unique(sID$i))
+colnames(Stable) <- "i"
+attr(Stable, "symName") <- "sStable"
 
-#pAnimals(sSource, sAnimalCategory)
+Exploitation <- as.data.frame(unique(sID$j))
+colnames(Exploitation) <- "i"
+attr(Exploitation, "symName") <- "sExploitation"
+
+NIS <- as.data.frame(unique(sID$k))
+colnames(NIS) <- "i"
+attr(NIS, "symName") <- "sNIS"
+
+Farmer <- as.data.frame(unique(sID$l))
+colnames(Farmer) <- "i"
+attr(Farmer, "symName") <- "sFarmer"
+
+StableType <- as.data.frame(unique(sID$m))
+colnames(StableType) <- "i"
+attr(StableType, "symName") <- "sStableType"
+
+#pAnimals(sStable, sAnimalCategory)
 Animals <- Stables[,6:43]
 Animals$Nr <- Sources$Nr
-Animals <- melt(Animals, id="Nr")
-colnames(Animals) <- c("i", "j", "value")
+Animals <- melt(Animals, id=c("Nr"))
+colnames(Animals) <- c("i", "j","value")
 Animals$i <- as.factor(Animals$i)
 Animals$j <- as.factor(Animals$j)
 attr(Animals, "symName") <- "pAnimals"
-attr(Animals, "domains") <- c("sSource, sAnimalCategory")
+attr(Animals, "domains") <- c("sStable, sAnimalCategory")
+
+AnimalCategory <- as.data.frame(unique(Animals$j))
+colnames(AnimalCategory) <- "i"
+attr(AnimalCategory, "symName") <- "sAnimalCategory"
 
 #pEmissionFactor(sStableType, sAnimalCategory)
 EmissionFactor<- EMAV[c("DIERCODE", "STALCODE", "Emissiefactor")]
@@ -77,34 +105,9 @@ attr(EmissionFactor, "symName") <- "pEmissionFactor"
 attr(EmissionFactor, "domains") <- c("sAnimalCategory", "sStableType")
 #EmissionFactor$value[is.na(EmissionFactor$value)] <- 5.5
 
-#Sets
-Source <- data.frame(SourceImpact$i)
-colnames(Source) <- "i"
-attr(Source, "symName") = "sSource"
-
-AnimalCategory <- data.frame(EmissionFactor$i)
-colnames(AnimalCategory) <- "i"
-attr(AnimalCategory, "symName") = "sAnimalCategory"
-
-StableType <- data.frame(EmissionFactor$j)
-colnames(StableType) <- "i"
-attr(StableType, "symName") = "sStableType"
-
-ID <- data.frame(c("Exploitation", "NIS", "Farmer"))
-colnames(ID) <- "i"
-attr(ID, "symName") = "sID"
-
-ImpactScores <- data.frame(c("ADS", "SS"))
-colnames(ImpactScores) <- "i"
-attr(ImpactScores, "symName") = "sImpactScores"
-
-Coordinates <- data.frame(c("X", "Y"))
-colnames(Coordinates) <- "i"
-attr(Coordinates, "symName") = "sCoordinates"
-
 #Bundling all data in gdx-file
-wgdx.lst("FarmsFlanders.gdx",  Source, AnimalCategory, StableType, ID, 
-         ImpactScores, Coordinates,SourceLocation, SourceID, SourceImpact, 
-          Animals, EmissionFactor)
+wgdx.lst("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders2.gdx",  Location, LocationImpact, sID, Stable, Exploitation,
+                AnimalCategory, NIS, Farmer, StableType,
+                   Animals, EmissionFactor)
 
 
