@@ -4,8 +4,8 @@ rm(list=ls())
 
 #Loading data (pick seed 1 or 2)
 EMAV <- read.csv("EMAV.csv")
-Stables <- read.csv("StablesS2.csv")
-#Stables <- read.csv("StablesS2.csv")
+Stables <- read.csv("StablesS1.csv")
+
 
 #Packages and GAMS directory
 library(gdxrrw)
@@ -34,7 +34,7 @@ FarmersNew <- paste("f", c(1:length(FarmersOld)), sep="")
 
 Sources$Exploitation <- mapvalues(Sources$Exploitation, from = ExploitationOld, to =
                                   ExploitationNew)
-
+Sources$Farmer <- mapvalues(Sources$Farmer, from = FarmersOld, to = FarmersNew)
 
 Location <- Sources[c("Exploitation", "X", "Y")]
 Location <- unique(Location)
@@ -118,7 +118,7 @@ attr(EmissionFactor, "domains") <- c("sAnimalCategory", "sStableType")
 #EmissionFactor$value[is.na(EmissionFactor$value)] <- 5.5
 
 #Bundling all data in gdx-file
-wgdx.lst("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders2.gdx",  Location, LocationImpact, sID, Stable, Exploitation,
+wgdx.lst("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders.gdx",  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
                    Animals, EmissionFactor)
 
