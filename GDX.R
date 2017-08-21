@@ -10,6 +10,7 @@ Stables <- read.csv("StablesS2.csv")
 #Packages and GAMS directory
 library(gdxrrw)
 library(reshape2)
+library(plyr)
 igdx("C:/GAMS/win64/24.7/")
 
 #pSourceLocation(sSource, sCoordinates)
@@ -23,6 +24,17 @@ Sources$StableType <- gsub(" ", "_", Sources$StableType)
 Sources$StableType <- gsub(".", "_", Sources$StableType, fixed=TRUE)
 Sources$StableType <- gsub("-", "_", Sources$StableType, fixed=TRUE)
 Sources[Sources$StableType == "",'StableType'] <- "GEEN"
+
+#Recode exploitations and farmers
+ExploitationOld <- as.character(unique(Sources$Exploitation))
+ExploitationNew<- paste("e", c(1:length(ExploitationOld)), sep="")
+
+FarmersOld<- as.character(unique(Sources$Farmer))
+FarmersNew <- paste("f", c(1:length(FarmersOld)), sep="")
+
+Sources$Exploitation <- mapvalues(Sources$Exploitation, from = ExploitationOld, to =
+                                  ExploitationNew)
+
 
 Location <- Sources[c("Exploitation", "X", "Y")]
 Location <- unique(Location)
