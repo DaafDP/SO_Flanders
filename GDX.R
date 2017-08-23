@@ -2,16 +2,24 @@
 rm(list=ls())
 #dev.off()
 
-#Loading data (pick seed 1 or 2)
+#Loading data 
 EMAV <- read.csv("EMAV.csv")
-Stables <- read.csv("StablesS1.csv")
-
 
 #Packages and GAMS directory
 library(gdxrrw)
 library(reshape2)
 library(plyr)
 igdx("C:/GAMS/win64/24.7/")
+
+#Loop through 3 seeds (cfr Coupling_Data_Locations)
+
+for (i in c(1:3)) {
+        print(i)
+
+#Filename <- paste("StablesS", as.character(i),".csv", sep="")
+Filename <- paste("RandomStablesS", as.character(i),".csv", sep="")
+Stables <- read.csv(Filename)
+
 
 #pSourceLocation(sSource, sCoordinates)
 Sources <- Stables[c("Exploitation","NIS", "Farmer", "StableType", "X", "Y",
@@ -118,8 +126,10 @@ attr(EmissionFactor, "domains") <- c("sAnimalCategory", "sStableType")
 #EmissionFactor$value[is.na(EmissionFactor$value)] <- 5.5
 
 #Bundling all data in gdx-file
-wgdx.lst("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders.gdx",  Location, LocationImpact, sID, Stable, Exploitation,
+Directoryname <- paste("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlandersRandom", 
+                       as.character(i), ".gdx", sep="")
+wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
                    Animals, EmissionFactor)
 
-
+}
