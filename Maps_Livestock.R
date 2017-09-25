@@ -2,6 +2,8 @@
 rm(list=ls())
 dev.off()
 
+setwd("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataHandling_VLM/")
+
 #Loading data
 EMAV <- read.csv("EMAV.csv")
 Stables1 <- read.csv("StablesS1.csv")

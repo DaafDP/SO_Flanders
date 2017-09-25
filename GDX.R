@@ -2,6 +2,8 @@
 rm(list=ls())
 #dev.off()
 
+setwd("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataHandling_VLM/")
+
 #Loading data 
 EMAV <- read.csv("EMAV.csv")
 
@@ -16,8 +18,8 @@ igdx("C:/GAMS/win64/24.7/")
 for (i in c(1:3)) {
         print(i)
 
-#Filename <- paste("StablesS", as.character(i),".csv", sep="")
-Filename <- paste("RandomStablesS", as.character(i),".csv", sep="")
+Filename <- paste("StablesS", as.character(i),".csv", sep="")
+#Filename <- paste("RandomStablesS", as.character(i),".csv", sep="")
 Stables <- read.csv(Filename)
 
 
@@ -125,11 +127,29 @@ attr(EmissionFactor, "symName") <- "pEmissionFactor"
 attr(EmissionFactor, "domains") <- c("sAnimalCategory", "sStableType")
 #EmissionFactor$value[is.na(EmissionFactor$value)] <- 5.5
 
+#Multidimensional Set sector-animalcategory
+Sector <- unique(EMAV[,1:2])
+colnames(Sector) <- c("i", "j")
+Sector <- as.data.frame(apply(Sector, 2, function(x){
+        as.factor(x)
+}))
+attr(Sector, "symName") <- "sSectors_AnimalCategory"
+attr(Sector, "domains") <- c("sSectors", "sAnimalCategory")
+
+#Multidimensional set with all id characteristics
+sID <- Sources[c("Nr", "Exploitation", "NIS", "Farmer", "StableType")]
+colnames(sID) <- c("i", "j", "k", "l", "m")
+sID <- as.data.frame(apply(sID, 2, function(x){
+        as.factor(x)
+}))
+attr(sID, "symName") <- "sID"
+attr(sID, "domains") <- c("sStable", "sExploitation", "sNIS", "sFarmer", "sStableType")
+
 #Bundling all data in gdx-file
-Directoryname <- paste("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlandersRandom", 
+Directoryname <- paste("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders", 
                        as.character(i), ".gdx", sep="")
 wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
-                   Animals, EmissionFactor)
+                   Animals, EmissionFactor, Sector)
 
 }
