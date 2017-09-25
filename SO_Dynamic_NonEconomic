@@ -1,0 +1,384 @@
+*=============================================================================
+* File      : SpatialOptimizationNotEconomic.gms
+* Author    : David De Pue
+* Version   : 1.0
+* Start Date      : 9-September-2017
+* Changed   :
+* Changed
+* Remarks:
+*Dataset VLM farms Flanders (permitted animals, stable type)
+*coordinates randomly assigned based on NIS code and Landbouwgebruikspercelen
+*EMAV ammonia stable emissions
+*Hoedje dataset (IFDM, VITO, 20*20 km², resolutie 100 m, meteo 2012 Luchtbal)
+*Deposition velocities VLOPS
+*Data preprocessing and making of gdx file in R (GDX.R, see Github)
+*Random assignment of permitting year 0-19 year before 2015
+
+
+*===============================================================================
+*=======================Data preprocessing and data input=======================
+*===============================================================================
+Set
+sStable /s1*s44540/
+sExploitation /e1*e23408/
+sNIS
+sStableType
+sFarmer /f1*f20709/
+sID(sStable, sExploitation, sNIS, sFarmer, sStableType)
+sAnimalCategory
+sCoordinates /X, Y/
+sImpactScores /ADS, SS/
+sSectors /Runderen, Varkens,  Pluimvee,  Andere, Paarden/
+sSectors_AnimalCategory(sSectors, sAnimalCategory)
+;
+
+$gdxin FarmsFlanders1.gdx
+$load sNIS, sStableType, sID, sAnimalCategory, sSectors_AnimalCategory
+$gdxin
+
+Parameters
+pAnimals(sStable, sAnimalCategory)
+pLocationImpact(sExploitation, sImpactscores)
+pEmissionFactor(sAnimalCategory, sStableType)
+pSourceLocation(sExploitation, sCoordinates)
+;
+
+*FarmFlanders.gdx: seed 1 R (allocation sources)
+*FarmFlanders2.gdx: seed2 R
+*FarmFlanders3.gdx: seed3 R
+$gdxin FarmsFlanders1.gdx
+$load pAnimals, pLocationImpact, pEmissionFactor, pSourceLocation
+$gdxin
+
+$ontext
+Parameter pCombination(sStable, sStableType)    all stable-stable type combinations that occur in the dataset   ;
+
+pCombination(sSource,sStableType)$(pSourceID(sSource, sStableType, 'Exploitation') ne 0) = 1 ;
+$offtext
+
+*******************************************************************************
+********************Misc. Initial Parameters and MultiDsets*********************
+********************************************************************************
+Set sClass /Green, Orange, Red/
+    sStable_Exploitation(sStable, sExploitation) Stables that belong to same exploitation (assumed same point location)
+    sExploitation_Farmer(sExploitation, sFarmer) Exploitations that belong to certain farmer
+    sStable_StableType(sStable, sStableType)
+    sAnimalCategory_Stabletype(sAnimalCategory, sStableType)
+    sStable_NIS(sStable, sNIS)
+    sExploitation_NIS(sExploitation, sNIS)
+    sScenario /Scenario1*Scenario6/
+    sYear /2016*2035/
+;
+
+
+
+*$exit
+option sStable_Exploitation <= sID  ;
+option sExploitation_Farmer <= sID ;
+option sStable_StableType <= sID ;
+option sStable_NIS <= sID ;
+option sExploitation_NIS <= sID ;
+option sAnimalCategory_Stabletype <= pEmissionFactor ;
+
+Parameter
+iPermittedAnimals(sExploitation) number of types of animals that are permitted in exploitation
+iMaxAmmoniaSource(sExploitation)
+iMaxAmmoniaRegion
+iMaxSS(sExploitation)
+iFarmColour(sExploitation) Classify Stable according to ANB colour - assuming maximum capacity 1:green 2:orange 3: red
+iTotalClassNumbers(sClass)
+iMaxADS(sExploitation)
+iMaxADSRegion
+iAmmoniaEmissionExploitation(sExploitation, sScenario)
+;
+
+iPermittedAnimals(sExploitation) = sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory), rel_ne(pAnimals(sStable, sAnimalCategory),0))  ;
+
+
+iMaxAmmoniaSource(sExploitation) =  sum((sStable_Exploitation(sStable, sExploitation), sStable_StableType(sStable, sStableType), sAnimalCategory), (pEmissionFactor(sAnimalCategory, sStableType) *
+                                 pAnimals(sStable, sAnimalCategory))) ;
+
+iMaxAmmoniaRegion = sum(sExploitation, iMaxAmmoniaSource(sExploitation));
+iMaxSS(sExploitation) =   (iMaxAmmoniaSource(sExploitation)/5000)* pLocationImpact(sExploitation, 'SS') ;
+
+iMaxADS(sExploitation) =  (iMaxAmmoniaSource(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS') ;
+iMaxADSRegion = sum(sExploitation, iMaxADS(sExploitation))      ;
+
+*initial value:
+iAmmoniaEmissionExploitation(sExploitation, sScenario) = iMaxAmmoniaSource(sExploitation) ;
+
+Loop(sClass,
+iTotalClassNumbers(sClass) = 0
+) ;
+
+Loop(sExploitation,
+If (iMaxSS(sExploitation) > 50,
+   iFarmColour(sExploitation) = 3 ;
+   iTotalClassNumbers('Red') = iTotalClassNumbers('Red')+1 ;
+Elseif iMaxSS(sExploitation) <5,
+   iFarmColour(sExploitation) = 1 ;
+   iTotalClassNumbers('Green') = iTotalClassNumbers('Green')+1 ;
+Else
+   iFarmColour(sExploitation) = 2 ;
+   iTotalClassNumbers('Orange') = iTotalClassNumbers('Orange')+1 ;  )
+   ;
+) ;
+
+
+parameter
+pYearOfPermit(sExploitation) ;
+
+pYearOfPermit(sExploitation) = uniformINT(1996, 2015) ;
+
+********************************************************************************
+********************************Model*******************************************
+********************************************************************************
+
+Variables
+vAmmoniaEmissionRegion
+vAmmoniaEmissionExploitation(sExploitation)  ;
+
+Positive  variable
+vAnimals(sStable, sAnimalCategory) ;
+
+Equations
+eqAnimals(sStable, sAnimalCategory) Permit constraint: maximum number of animals per stable
+eqAmmoniaEmissionSource(sExploitation) ammonia emission per exploitation
+eqAmmoniaEmissionRegion objective function
+;
+
+eqAmmoniaEmissionSource(sExploitation)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sStable_StableType(sStable, sStableType), sAnimalCategory),
+(pEmissionFactor(sAnimalCategory, sStableType) * vAnimals(sStable, sAnimalCategory))) ;
+
+**Constraint
+eqAnimals(sStable, sAnimalCategory)..
+vAnimals(sStable, sAnimalCategory) =l= pAnimals(sStable, sAnimalCategory) ;
+
+**Objective
+eqAmmoniaEmissionRegion..
+vAmmoniaEmissionRegion =e= SUM((sExploitation), vAmmoniaEmissionExploitation(sExploitation))    ;
+
+*****************************Dynamic simulation (2015-2035)*********************
+*Changes only occur at year of permit renewal
+*===============================================================================
+*-------------------------------------------------------------------------------
+*-------------------------------------------------------------------------------
+*Scenario 1: limit significance score to 5% at permit renewal
+*-------------------------------------------------------------------------------
+*Scenario 2: Close red farms, allow orange farm to perform according to best practice (lowest emission factor)
+*If no improvement is possible: close
+*-------------------------------------------------------------------------------
+*Scenario 3: Best practice animal housing for all exploitations at permit renewal, all farms remain in business with same capacity
+*-------------------------------------------------------------------------------
+*Scenario 4: no individual constraints, impact cannot be bigger than scenario 1
+*-------------------------------------------------------------------------------
+*Scenario 5: no individual constraints, minimize impact, ammonia emission at least at big as scenario 1
+*-------------------------------------------------------------------------------
+*Scenario 6: no individual constraints, minimize impact, linear emission reduction with NEC directive objectives (-2% 2020, -13% 2030)
+
+Parameter pPermitRenewal(sExploitation) binary 1 yes 0 no - initially no for all exploitationss
+          pNewPermit(sExploitation) binary 1 yes 0 no - turns to 1 one year after permit renewal;
+
+*initially no for all exploitations
+*spatially differentiated policy only active after permit renewal
+pPermitRenewal(sExploitation) = 0 ;
+
+Parameter pBestEF(sAnimalCategory) ;
+*Best practice animal housing (lowest emission Factor) ;
+
+pBestEF(sAnimalCategory) = smin(sAnimalCategory_Stabletype(sAnimalCategory, sStableType), pEmissionFactor(sAnimalCategory, sStableType))              ;
+
+********************************************************************************
+*******************************ReportingParameters******************************
+********************************************************************************
+
+Parameters
+dAmmoniaEmissionExploitation(sExploitation, sScenario, sYear)
+dAmmoniaEmissionRegion(sScenario, sYear)
+dImpactExploitation(sExploitation, sScenario, sYear)
+dImpactRegion(sScenario, sYear)
+ImpactRef     Impact from scenario 1
+EmissionRef   Emission from scenario 1
+EmissionNEC  Linear emission reduction Scenario 1
+dModelStat(sScenario, sYear)
+dSolveStat(sScenario, sYear)
+;
+
+EmissionNEC =  (1-0.01*(0.4))* iMaxAmmoniaRegion ;
+********************************************************************************
+*******************************Model Equations**********************************
+********************************************************************************
+Equations
+eqSignificanceScore(sExploitation) Scen1 - Significance Score constraint only at permit renewal
+eqAmmoniaEmissionSc2(sExploitation) Scen2 - Green farms - Orange farms before renewal - red farms before renewal
+eqOrange(sExploitation) Scen2 - Orange farms: best practice (lowest EF)
+eqOrangeNoImprovement(sExploitation) Scen2 - If orange farm already best practice: close
+eqRed(sExploitation) Scen2 - Red farms: close
+eqAmmoniaEmissionBeforePermitRenewalSc3(sExploitation) Scen3
+eqBestPractice(sExploitation) Scen3 - All farms become best practice at permit renewal - Not spatially differentiated
+eqOldPermit(sExploitation) Scen4-5 - All farms at maximum capacity before permit renewal
+eqNewPermitSc4(sExploitation) Scen4 - After permit renewal number of permitted animals can change - but remains constant
+eqNewPermitSc5(sExploitation) Scen5 - After permit renewal number of permitted animals can change - but remains constant
+eqNewPermitSc6(sExploitation) Scen6 - After permit renewal number of permitted animals can change - but remains constant
+eqMaxImpact Scen4 - Impact cannot be bigger than for scenario 1
+eqMinEmission Scen5 - Emission should be at least as big as for scenario 1
+eqTotalADS Scen5 - objective function
+eqEmissionReduction Scen6 - Linear emission reduction with minimized impact on N2000 sites
+;
+
+eqSignificanceScore(sExploitation)$(pPermitRenewal(sExploitation) = 1)..
+(vAmmoniaEmissionExploitation(sExploitation)/5000)* pLocationImpact(sExploitation, 'SS') =l= 5 ;
+
+eqAmmoniaEmissionSc2(sExploitation)$(pPermitRenewal(sExploitation) = 0 or iFarmColour(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sStable_StableType(sStable, sStableType), sAnimalCategory),
+(pEmissionFactor(sAnimalCategory, sStableType) * vAnimals(sStable, sAnimalCategory))) ;
+
+eqOrange(sExploitation)$(iFarmColour(sExploitation)= 2 and pPermitRenewal(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory),
+(pBestEF(sAnimalCategory) * vAnimals(sStable, sAnimalCategory))) ;
+
+eqOrangeNoImprovement(sExploitation)$(sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory), (pBestEF(sAnimalCategory) * pAnimals(sStable, sAnimalCategory))) = iMaxAmmoniaSource(sExploitation))..
+vAmmoniaEmissionExploitation(sExploitation)$(pPermitRenewal(sExploitation) = 1 and iFarmColour(sExploitation) = 2) =e= 0 ;
+
+eqRed(sExploitation)$(iFarmColour(sExploitation)=3 and pPermitRenewal(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= 0 ;
+
+eqAmmoniaEmissionBeforePermitRenewalSc3(sExploitation)$(pPermitRenewal(sExploitation) = 0)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sStable_StableType(sStable, sStableType), sAnimalCategory),
+(pEmissionFactor(sAnimalCategory, sStableType) * vAnimals(sStable, sAnimalCategory))) ;
+
+eqBestPractice(sExploitation)$(pPermitRenewal(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory),
+(pBestEF(sAnimalCategory) * vAnimals(sStable, sAnimalCategory))) ;
+
+eqOldPermit(sExploitation)$(pPermitRenewal(sExploitation) = 0)..
+vAmmoniaEmissionExploitation(sExploitation) =e= iMaxAmmoniaSource(sExploitation)        ;
+
+eqNewPermitSc4(sExploitation)$(pNewPermit(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= iAmmoniaEmissionExploitation(sExploitation, 'Scenario4') ;
+
+eqNewPermitSc5(sExploitation)$(pNewPermit(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= iAmmoniaEmissionExploitation(sExploitation, 'Scenario5') ;
+
+eqNewPermitSc6(sExploitation)$(pNewPermit(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= iAmmoniaEmissionExploitation(sExploitation, 'Scenario6') ;
+
+Variable vTotalADS ;
+
+eqTotalADS..
+vTotalADS =e=  sum(sExploitation, (vAmmoniaEmissionExploitation(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS'))        ;
+
+eqMaxImpact..
+sum(sExploitation, (vAmmoniaEmissionExploitation(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')) =l= ImpactRef   ;
+
+eqMinEmission..
+sum(sExploitation, vAmmoniaEmissionExploitation(sExploitation)) =g= EmissionRef       ;
+
+eqEmissionReduction..
+vAmmoniaEmissionRegion =g= EmissionNEC ;
+
+
+Model Scenario1 /eqAnimals, eqAmmoniaEmissionSource, eqAmmoniaEmissionRegion, eqSignificanceScore/          ;
+Model Scenario2 /eqAnimals, eqAmmoniaEmissionSc2, eqAmmoniaEmissionRegion, eqOrange, eqOrangeNoImprovement, eqRed/ ;
+Model Scenario3 /eqAnimals, eqAmmoniaEmissionBeforePermitRenewalSc3, eqAmmoniaEmissionRegion, eqBestPractice/ ;
+Model Scenario4 /eqAnimals, eqAmmoniaEmissionSource, eqAmmoniaEmissionRegion, eqOldPermit, eqNewPermitSc4, eqMaxImpact/ ;
+Model Scenario5 /eqAnimals, eqAmmoniaEmissionSource, eqAmmoniaEmissionRegion, eqOldPermit, eqNewPermitSc5, eqMinEmission, eqTotalADS/  ;
+Model Scenario6 /eqAnimals, eqAmmoniaEmissionSource, eqAmmoniaEmissionRegion, eqOldPermit, eqNewPermitSc6, eqEmissionReduction, eqTotalADS/  ;
+
+********************************************************************************
+*******************************Simulation***************************************
+********************************************************************************
+
+loop(sYear,
+
+loop(sExploitation,
+if (pYearOfPermit(sExploitation) = ord(sYear) + 2015 - 20,
+
+pPermitRenewal(sExploitation)= 1    ;
+
+
+)  ;
+
+if (pYearOfPermit(sExploitation) = ord(sYear) + 2015 - 21,
+
+pNewPermit(sExploitation)= 1    ;
+
+
+)  ;
+)  ;
+
+Option lp = CPLEX ;
+
+
+
+Solve Scenario1 maximizing vAmmoniaEmissionRegion using lp ;
+
+dAmmoniaEmissionExploitation(sExploitation, 'Scenario1', sYear) = vAmmoniaEmissionExploitation.l(sExploitation)     ;
+dAmmoniaEmissionRegion('Scenario1', sYear) =  sum(sExploitation, dAmmoniaEmissionExploitation(sExploitation, 'Scenario1', sYear)) ;
+dImpactExploitation(sExploitation, 'Scenario1', sYear) =  (vAmmoniaEmissionExploitation.l(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')    ;
+dImpactRegion('Scenario1', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario1', sYear)) ;
+ImpactRef = dImpactRegion('Scenario1', sYear) ;
+EmissionRef = dAmmoniaEmissionRegion('Scenario1', sYear);
+dModelStat('Scenario1', sYear) = Scenario1.MODELSTAT ;
+dSolveStat('Scenario1', sYear) = Scenario1.SOLVESTAT ;
+
+Solve Scenario2 maximizing vAmmoniaEmissionRegion using lp ;
+
+dAmmoniaEmissionExploitation(sExploitation, 'Scenario2', sYear) = vAmmoniaEmissionExploitation.l(sExploitation)     ;
+dAmmoniaEmissionRegion('Scenario2', sYear) =  sum(sExploitation, dAmmoniaEmissionExploitation(sExploitation, 'Scenario2', sYear)) ;
+dImpactExploitation(sExploitation, 'Scenario2', sYear) =  (vAmmoniaEmissionExploitation.l(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')    ;
+dImpactRegion('Scenario2', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario2', sYear)) ;
+dModelStat('Scenario2', sYear) = Scenario2.MODELSTAT ;
+dSolveStat('Scenario2', sYear) = Scenario2.SOLVESTAT ;
+
+Solve Scenario3 maximizing vAmmoniaEmissionRegion using lp ;
+
+dAmmoniaEmissionExploitation(sExploitation, 'Scenario3', sYear) = vAmmoniaEmissionExploitation.l(sExploitation)     ;
+dAmmoniaEmissionRegion('Scenario3', sYear) =  sum(sExploitation, dAmmoniaEmissionExploitation(sExploitation, 'Scenario3', sYear)) ;
+dImpactExploitation(sExploitation, 'Scenario3', sYear) =  (vAmmoniaEmissionExploitation.l(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')    ;
+dImpactRegion('Scenario3', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario3', sYear)) ;
+dModelStat('Scenario3', sYear) = Scenario3.MODELSTAT ;
+dSolveStat('Scenario3', sYear) = Scenario3.SOLVESTAT ;
+
+Solve Scenario4 maximizing vAmmoniaEmissionRegion using lp ;
+
+dAmmoniaEmissionExploitation(sExploitation, 'Scenario4', sYear) = vAmmoniaEmissionExploitation.l(sExploitation)     ;
+dAmmoniaEmissionRegion('Scenario4', sYear) =  sum(sExploitation, dAmmoniaEmissionExploitation(sExploitation, 'Scenario4', sYear)) ;
+dImpactExploitation(sExploitation, 'Scenario4', sYear) =  (vAmmoniaEmissionExploitation.l(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')    ;
+dImpactRegion('Scenario4', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario4', sYear)) ;
+iAmmoniaEmissionExploitation(sExploitation, 'Scenario4') =  vAmmoniaEmissionExploitation.l(sExploitation) ;
+dModelStat('Scenario4', sYear) = Scenario4.MODELSTAT ;
+dSolveStat('Scenario4', sYear) = Scenario4.SOLVESTAT ;
+
+Solve Scenario5 minimizing vTotalADS using lp      ;
+
+dAmmoniaEmissionExploitation(sExploitation, 'Scenario5', sYear) = vAmmoniaEmissionExploitation.l(sExploitation)     ;
+dAmmoniaEmissionRegion('Scenario5', sYear) =  sum(sExploitation, dAmmoniaEmissionExploitation(sExploitation, 'Scenario5', sYear)) ;
+dImpactExploitation(sExploitation, 'Scenario5', sYear) =  (vAmmoniaEmissionExploitation.l(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')    ;
+dImpactRegion('Scenario5', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario5', sYear)) ;
+iAmmoniaEmissionExploitation(sExploitation, 'Scenario5') =  vAmmoniaEmissionExploitation.l(sExploitation) ;
+dModelStat('Scenario5', sYear) = Scenario5.MODELSTAT ;
+dSolveStat('Scenario5', sYear) = Scenario5.SOLVESTAT ;
+
+Solve Scenario6 minimizing vTotalADS using lp      ;
+
+dAmmoniaEmissionExploitation(sExploitation, 'Scenario6', sYear) = vAmmoniaEmissionExploitation.l(sExploitation)     ;
+dAmmoniaEmissionRegion('Scenario6', sYear) =  sum(sExploitation, dAmmoniaEmissionExploitation(sExploitation, 'Scenario6', sYear)) ;
+dImpactExploitation(sExploitation, 'Scenario6', sYear) =  (vAmmoniaEmissionExploitation.l(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')    ;
+dImpactRegion('Scenario6', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario6', sYear)) ;
+iAmmoniaEmissionExploitation(sExploitation, 'Scenario6') =  vAmmoniaEmissionExploitation.l(sExploitation) ;
+dModelStat('Scenario6', sYear) = Scenario6.MODELSTAT ;
+dSolveStat('Scenario6', sYear) = Scenario6.SOLVESTAT ;
+
+*Before 2020: linear reduction from zero in 2015 to 2% in 2020
+EmissionNEC$(ord(sYear) <= 5) = (1-0.01*(0.4*ord(sYear)))* iMaxAmmoniaRegion ;
+*2020-2035: linear reduction with 2% in 2020 in 13% 2030
+EmissionNEC$(ord(sYear) > 5) = (1 - 0.01*(1.1*ord(sYear)-3.5)) * iMaxAmmoniaRegion ;
+
+
+)  ;
+
+*$batinclude Reporting.gms
+
+execute_unload 'resultsDynamic.gdx' dAmmoniaEmissionExploitation, dAmmoniaEmissionREgion, dImpactExploitation, dImpactRegion
