@@ -1,9 +1,9 @@
 *=============================================================================
 * File      : SpatialOptimizationNotEconomic.gms
 * Author    : David De Pue
-* Version   : 1.0
+* Version   : 1.1
 * Start Date      : 9-September-2017
-* Changed   :
+* Changed   : 27-September-2017
 * Changed
 * Remarks:
 *Dataset VLM farms Flanders (permitted animals, stable type)
