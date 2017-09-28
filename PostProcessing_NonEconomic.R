@@ -8,6 +8,7 @@ library(gdxrrw)
 library(reshape2)
 library(ggplot2)
 library(scales)
+library(qdap)
 igdx("C:/GAMS/win64/24.7/")
 
 #Clear environment
@@ -15,12 +16,15 @@ rm(list = ls())
 
 Stables <- read.csv("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataHandling_VLM/StablesS1.csv")
 
-
-
 #Set new working directory
 setwd("C:/Users/ddpue/Documents/Spatial Optimization Flanders/ResultsNonEconomic")
 
+################################################################################
 #First: effect of random allocation (NIS based or totally random)
+################################################################################
+#Clear environment
+rm(list = ls())
+
 AggregateResults <- data.frame(matrix(nrow=9, ncol=6))
 colnames(AggregateResults) <- c("Seed", "Scenario", "Emission", "ClosedStables", "Impact", "Allocation")
 AggregateResults$Seed <- paste("NISbased_seed", c(rep(1,3), rep(2,3), rep(3,3)), sep="") 
@@ -49,26 +53,30 @@ AggregateResults <- rbind(AggregateResults, AggregateResultsRandom)
 
 AggregateResults <- melt(AggregateResults)
 
-ggplot(data=subset(AggregateResults, variable=="Emission")
+ggplot(data=subset(AggregateResults, variable=="Emission" & Scenario %in% c("scenario1", "scenario2"))
        , aes(x=Scenario, y=value, group=Seed, colour=Seed, shape=Allocation))+
-        geom_line() +
+        geom_line(aes(linetype=Allocation)) +
         geom_point() +
         theme(legend.title=element_blank())+
         ylab("Total Ammonia Emission (kton/yr)") + xlab(NULL)
 
 ggplot(data=subset(AggregateResults, variable=="ClosedStables")
        , aes(x=Scenario, y=value, group=Seed, colour=Seed, shape=Allocation))+
-        geom_line() +
+        geom_line(aes(linetype=Allocation)) +
         geom_point()+
         theme(legend.title=element_blank())+
         ylab("Number of empty stables")  + xlab(NULL)
 
-ggplot(data=subset(AggregateResults, variable=="Impact", shape=Allocation)
-       , aes(x=Scenario, y=value, group=Seed, colour=Seed))+
-        geom_line() +
+ggplot(data=subset(AggregateResults, variable=="Impact" & Scenario %in% c("scenario1", "scenario3"))
+       , aes(x=Scenario, y=value, group=Seed, colour=Seed, shape=Allocation))+
+        geom_line(aes(linetype=Allocation)) +
         geom_point()+
         theme(legend.title=element_blank())+
         ylab("Impact (total aggregate deposition score)") + xlab(NULL)
+
+################################################################################
+#Resuls non-dynamic
+################################################################################
 
 #Read in results (NIS-based allocation, seed 1)
 Pars <- c("dSignificanceScore", "dADS", "dTotalADS", "dPercentageOccupied", "dPercentageOccupiedRegion", 
@@ -156,43 +164,53 @@ levels(dAnimalsGroup$Sector)[levels(dAnimalsGroup$Sector)
                                     == "Paarden"] <- "Horses"
 
 #Pigs
-ggplot(data=subset(dAnimalsGroup, Sector=="Pigs"),  
+max=as.numeric(subset(dAnimalsGroup, Sector=="Pigs" & Scenario=="max")[2])
+ggplot(data=subset(dAnimalsGroup, Sector=="Pigs" & Scenario %in% c("sc1", "sc2", "sc3")),  
        aes(x=Scenario, y=Number, group=1))+
         geom_line() +
         geom_point()+
         #theme(legend.title=element_blank())+
+        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of pigs") + xlab(NULL)
 
 #Cattle
-ggplot(data=subset(dAnimalsGroup, Sector=="Cattle"),  
+max=as.numeric(subset(dAnimalsGroup, Sector=="Cattle" & Scenario=="max")[2])
+ggplot(data=subset(dAnimalsGroup, Sector=="Cattle" & Scenario %in% c("sc1", "sc2", "sc3")),  
        aes(x=Scenario, y=Number, group=1))+
         geom_line() +
         geom_point()+
         #theme(legend.title=element_blank())+
+        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of cattle") + xlab(NULL)
 
 #Poultry
-ggplot(data=subset(dAnimalsGroup, Sector=="Poultry"),  
+max=as.numeric(subset(dAnimalsGroup, Sector=="Poultry" & Scenario=="max")[2])
+ggplot(data=subset(dAnimalsGroup, Sector=="Poultry" & Scenario %in% c("sc1", "sc2", "sc3")),  
        aes(x=Scenario, y=Number, group=1))+
         geom_line() +
         geom_point()+
         #theme(legend.title=element_blank())+
+        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of poultry") + xlab(NULL)
 
 #Other
-ggplot(data=subset(dAnimalsGroup, Sector=="Others"),  
+max=as.numeric(subset(dAnimalsGroup, Sector=="Others" & Scenario=="max")[2])
+ggplot(data=subset(dAnimalsGroup, Sector=="Others" & Scenario %in% c("sc1", "sc2", "sc3")),  
        aes(x=Scenario, y=Number, group=1))+
         geom_line() +
         geom_point()+
         #theme(legend.title=element_blank())+
+        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of others") + xlab(NULL)
 
 #Horses
-ggplot(data=subset(dAnimalsGroup, Sector=="Horses"),  
+max=as.numeric(subset(dAnimalsGroup, Sector=="Horses" & Scenario=="max")[2])
+ggplot(data=subset(dAnimalsGroup, Sector=="Horses" & Scenario %in% c("sc1", "sc2", "sc3")),  
        aes(x=Scenario, y=Number, group=1))+
         geom_line() +
         geom_point()+
         #theme(legend.title=element_blank())+
+        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of horses") + xlab(NULL)
 
 #Relative to maximum
@@ -247,13 +265,18 @@ DataNISQGIS$sNIS <- stri_sub(DataNISQGIS$sNIS, 2)
 DataNISQGIS[is.na(DataNISQGIS)] <- 0
 write.csv(DataNISQGIS, "C:/Users/ddpue/Documents/Spatial Optimization Flanders/GIS/DataNISQGIS.csv")
 
+################################################################################
 #Dynamic simulation
+################################################################################
+#Clear environment
+rm(list = ls())
+
 Pars <- c("dAmmoniaEmissionExploitation", "dAmmoniaEmissionRegion",  "dImpactExploitation",
-          "dImpactRegion")
+          "dImpactRegion", "dAnimalGroup", "dLivestockUnits")
 
 
 DynamicData <- sapply(Pars, function(x){
-        tmp <- rgdx.param("resultsDynamic.gdx", x, squeeze=FALSE)
+        tmp <- rgdx.param("resultsDynamicS1.gdx", x, squeeze=FALSE)
 })
 
 list2env(DynamicData, envir=.GlobalEnv)
@@ -263,10 +286,16 @@ colnames(dAmmoniaEmissionRegion) <- c("Scenario", "Year", "Emission")
 dAmmoniaEmissionRegion$Year <- as.character(dAmmoniaEmissionRegion$Year)
 dAmmoniaEmissionRegion$Year <- as.numeric(dAmmoniaEmissionRegion$Year)
 
+original <- paste("Scenario", c(1:6), sep="")
+new <- c("<5% SS", "PAN", "BAT", "SO max NH3", "SO min ADS", "SO NEC")
+
+dAmmoniaEmissionRegion$Scenario <- mgsub(original, new, dAmmoniaEmissionRegion$Scenario)
+
 ggplot(data=dAmmoniaEmissionRegion, 
        aes(x=Year, y=Emission, group=Scenario, colour=Scenario, shape=Scenario))+
         geom_line() +
         geom_point()+
+        #scale_colour_discrete(labels = c(1:6))+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -282,6 +311,8 @@ colnames(dImpactRegion) <- c("Scenario", "Year", "TotalADS")
 dImpactRegion$Year <- as.character(dImpactRegion$Year)
 dImpactRegion$Year <- as.numeric(dImpactRegion$Year)
 
+dImpactRegion$Scenario <- mgsub(original, new, dImpactRegion$Scenario)
+
 ggplot(data=dImpactRegion, 
        aes(x=Year, y=TotalADS, group=Scenario, colour=Scenario, shape=Scenario))+
         geom_line() +
@@ -295,7 +326,9 @@ ggplot(data=dImpactRegion,
         ylab("Total ADS") + xlab(NULL)
 
 Ammonia_Impact <- dAmmoniaEmissionRegion[,1:2]
-Ammonia_Impact$Ratio <- dAmmoniaEmissionRegion$Emission/dImpactRegion$TotalADS
+Ammonia_Impact$Ratio <- dImpactRegion$TotalADS/dAmmoniaEmissionRegion$Emission * 10^6
+
+Ammonia_Impact$Scenario <- mgsub(original, new, Ammonia_Impact$Scenario)
 
 ggplot(data=Ammonia_Impact, 
        aes(x=Year, y=Ratio, group=Scenario, colour=Scenario, shape=Scenario))+
@@ -307,6 +340,228 @@ ggplot(data=Ammonia_Impact,
               legend.title = element_text(size = 18),
               legend.text = element_text(size = 18),
               axis.text = element_text(size = 18))+
-        ylab("NH3/ADS") + xlab(NULL)
+        ylab("ADS/kton NH3") + xlab(NULL)
 
+colnames(dLivestockUnits) <- c("Scenario", "Year", "TotalLSU")
 
+dLivestockUnits$Year <- as.character(dLivestockUnits$Year)
+dLivestockUnits$Year <- as.numeric(dLivestockUnits$Year)
+
+dLivestockUnits$Scenario <- mgsub(original, new, dLivestockUnits$Scenario)
+
+ggplot(data=dLivestockUnits, 
+       aes(x=Year, y=TotalLSU, group=Scenario, colour=Scenario, shape=Scenario))+
+        geom_line() +
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        ylab("Total LSU") + xlab(NULL)
+
+colnames(dAnimalGroup) <- c("Sector", "Scenario", "Year", "Number")
+
+dAnimalGroup$Year <- as.character(dAnimalGroup$Year)
+dAnimalGroup$Year <- as.numeric(dAnimalGroup$Year)
+
+dAnimalGroup$Scenario <- mgsub(original, new, dAnimalGroup$Scenario)
+
+ggplot(data=subset(dAnimalGroup, Sector=="Runderen"), 
+       aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
+        geom_line() +
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        ylab("Total number of Cattle") + xlab(NULL)
+
+ggplot(data=subset(dAnimalGroup, Sector=="Varkens"), 
+       aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
+        geom_line() +
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        ylab("Total number of Pigs") + xlab(NULL)
+
+ggplot(data=subset(dAnimalGroup, Sector=="Pluimvee"), 
+       aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
+        geom_line() +
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        ylab("Total number of Poultry") + xlab(NULL)
+
+ggplot(data=subset(dAnimalGroup, Sector=="Paarden"), 
+       aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
+        geom_line() +
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        ylab("Total number of Horses") + xlab(NULL)
+
+ggplot(data=subset(dAnimalGroup, Sector=="Andere"), 
+       aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
+        geom_line() +
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        ylab("Total number of Other") + xlab(NULL)
+
+################################################################################
+#Effect random draw year of permit (3 iterations)
+################################################################################
+#Clear environment
+rm(list = ls())
+
+Pars <- c("dAmmoniaEmissionRegion", 
+          "dImpactRegion", "dLivestockUnits", "dAmmoniaEmissionExploitation")
+
+DataS1 <- sapply(Pars, function(x){
+        tmp <- rgdx.param("resultsDynamicS1.gdx", x, squeeze=FALSE)
+})
+
+list2env(DataS1, envir=.GlobalEnv)
+
+dAmmoniaEmissionRegion$Iteration <- "Seed1"
+Ammonia <- dAmmoniaEmissionRegion
+
+dImpactRegion$Iteration <- "Seed1"
+Impact <- dImpactRegion
+
+dLivestockUnits$Iteration <- "Seed1"
+Livestock <- dLivestockUnits
+
+DataS2 <- sapply(Pars, function(x){
+        tmp <- rgdx.param("resultsDynamicS2.gdx", x, squeeze=FALSE)
+})
+
+list2env(DataS2, envir=.GlobalEnv)
+
+dAmmoniaEmissionRegion$Iteration <- "Seed2"
+dImpactRegion$Iteration <- "Seed2"
+dLivestockUnits$Iteration <- "Seed2"
+
+Ammonia <- rbind(Ammonia, dAmmoniaEmissionRegion)
+Impact <- rbind(Impact, dImpactRegion)
+Livestock <- rbind(Livestock, dLivestockUnits)
+
+DataS3 <- sapply(Pars, function(x){
+        tmp <- rgdx.param("resultsDynamicS3.gdx", x, squeeze=FALSE)
+})
+
+list2env(DataS3, envir=.GlobalEnv)
+
+dAmmoniaEmissionRegion$Iteration <- "Seed3"
+dImpactRegion$Iteration <- "Seed3"
+dLivestockUnits$Iteration <- "Seed3"
+
+Ammonia <- rbind(Ammonia, dAmmoniaEmissionRegion)
+Impact <- rbind(Impact, dImpactRegion)
+Livestock <- rbind(Livestock, dLivestockUnits)
+
+original <- paste("Scenario", c(1:6), sep="")
+new <- c("<5% SS", "PAN", "BAT", "SO max NH3", "SO min ADS", "SO NEC")
+
+colnames(Ammonia) <- c("Scenario", "Year", "Emission", "Iteration")
+Ammonia$Scenario <- mgsub(original, new, Ammonia$Scenario)
+Ammonia$Year <- as.character(Ammonia$Year)
+Ammonia$Year <- as.numeric(Ammonia$Year)
+
+ggplot(data=Ammonia, 
+       aes(x=Year, y=Emission, group=Scenario, colour=Scenario, shape=Iteration))+
+        geom_point()+
+        #scale_colour_discrete(labels = c(1:6))+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        geom_hline(yintercept=32155570, colour="DarkBlue", lty="dashed")+
+        geom_hline(yintercept=28546271, colour="Red", lty="dashed")+
+        ylab("Total ammonia emission kg NH3/yr") + xlab(NULL)
+
+colnames(Impact) <- c("Scenario", "Year", "ADS", "Iteration")
+Impact$Scenario <- mgsub(original, new, Impact$Scenario)
+Impact$Year <- as.character(Impact$Year)
+Impact$Year <- as.numeric(Impact$Year)
+
+ggplot(data=Impact, 
+       aes(x=Year, y=ADS, group=Scenario, colour=Scenario, shape=Iteration))+
+        geom_point()+
+        #scale_colour_discrete(labels = c(1:6))+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+              ylab("Total ADS") + xlab(NULL)
+
+Ammonia_Impact <- Ammonia[,c("Scenario", "Year", "Iteration")]
+Ammonia_Impact$Ratio <- Impact$ADS/Ammonia$Emission * 10^6
+
+Ammonia_Impact$Scenario <- mgsub(original, new, Ammonia_Impact$Scenario)
+
+ggplot(data=Ammonia_Impact, 
+       aes(x=Year, y=Ratio, group=Scenario, colour=Scenario, shape=Iteration))+
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+        ylab("ADS/kton NH3") + xlab(NULL)
+
+colnames(Livestock) <- c("Scenario", "Year", "LSU", "Iteration")
+Livestock$Scenario <- mgsub(original, new, Livestock$Scenario)
+Livestock$Year <- as.character(Livestock$Year)
+Livestock$Year <- as.numeric(Livestock$Year)
+
+ggplot(data=Livestock, 
+       aes(x=Year, y=LSU, group=Scenario, colour=Scenario, shape=Iteration))+
+        geom_point()+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
+         ylab("Total LSU") + xlab(NULL)
+
+#Plot variance in impact
+# VarRatio <- aggregate(LSU ~ Scenario + Year, data=Livestock, var)
+# 
+# ggplot(data=VarRatio,
+#        aes(x=Year, y=LSU, group=Scenario, colour=Scenario, shape=Scenario))+
+#         geom_line()+
+#         geom_point()+
+#         theme(legend.title=element_blank(), 
+#               plot.title = element_text(size = 15, face = "bold"),
+#               axis.title = element_text(size = 18),
+#               legend.title = element_text(size = 18),
+#               legend.text = element_text(size = 18),
+#               axis.text = element_text(size = 18))+
+#         ylab("Var ADS/kt NH3") + xlab(NULL)
