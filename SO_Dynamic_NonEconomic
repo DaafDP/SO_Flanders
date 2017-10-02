@@ -1,9 +1,9 @@
 *=============================================================================
 * File      : SpatialOptimizationNotEconomic.gms
 * Author    : David De Pue
-* Version   : 1.0
+* Version   : 1.1
 * Start Date      : 9-September-2017
-* Changed   :
+* Changed   : 27-September-2017
 * Changed
 * Remarks:
 *Dataset VLM farms Flanders (permitted animals, stable type)
@@ -55,6 +55,23 @@ Parameter pCombination(sStable, sStableType)    all stable-stable type combinati
 
 pCombination(sSource,sStableType)$(pSourceID(sSource, sStableType, 'Exploitation') ne 0) = 1 ;
 $offtext
+
+Parameter pLiveStockUnits(sAnimalCategory) Livestock units based on eurostat
+/(a111,a115, a14) 0.4,
+ (a112, a116) 0.7,
+  a1131 1,
+ (a117, a1132)0.8,
+ (a165, a166, a42, a43) 0.1,
+ (a151, a152, a153) 0.8,
+  a121 0.027,
+  a123 0.5,
+ (a122, a124, a125) 0.3,
+ (a32, a98, a99) 0.007,
+ (a132, a133, a134) 0.014,
+ (a194, a195, a93) 0.35,
+ (a141, a91, a92) 0.03,
+ (a631, a632, a633, a641, a642, a643) 0.02
+ / ;
 
 *******************************************************************************
 ********************Misc. Initial Parameters and MultiDsets*********************
@@ -128,6 +145,8 @@ Else
 parameter
 pYearOfPermit(sExploitation) ;
 
+option Seed = 1 ;
+
 pYearOfPermit(sExploitation) = uniformINT(1996, 2015) ;
 
 ********************************************************************************
@@ -196,7 +215,11 @@ pBestEF(sAnimalCategory) = smin(sAnimalCategory_Stabletype(sAnimalCategory, sSta
 Parameters
 dAmmoniaEmissionExploitation(sExploitation, sScenario, sYear)
 dAmmoniaEmissionRegion(sScenario, sYear)
+dAnimalCategory(sAnimalCategory, sScenario, sYear)
+dAnimalGroup(sSectors, sScenario, sYear)
+dLivestockUnits(sScenario, sYear)
 dImpactExploitation(sExploitation, sScenario, sYear)
+dAnimalsExploitation
 dImpactRegion(sScenario, sYear)
 ImpactRef     Impact from scenario 1
 EmissionRef   Emission from scenario 1
@@ -322,6 +345,9 @@ ImpactRef = dImpactRegion('Scenario1', sYear) ;
 EmissionRef = dAmmoniaEmissionRegion('Scenario1', sYear);
 dModelStat('Scenario1', sYear) = Scenario1.MODELSTAT ;
 dSolveStat('Scenario1', sYear) = Scenario1.SOLVESTAT ;
+dAnimalCategory(sAnimalCategory, 'Scenario1', sYear) = sum(sStable, vAnimals.L(sStable, sAnimalCategory)) ;
+dAnimalGroup(sSectors, 'Scenario1', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
+dLivestockUnits('Scenario1', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario1', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
 Solve Scenario2 maximizing vAmmoniaEmissionRegion using lp ;
 
@@ -331,6 +357,9 @@ dImpactExploitation(sExploitation, 'Scenario2', sYear) =  (vAmmoniaEmissionExplo
 dImpactRegion('Scenario2', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario2', sYear)) ;
 dModelStat('Scenario2', sYear) = Scenario2.MODELSTAT ;
 dSolveStat('Scenario2', sYear) = Scenario2.SOLVESTAT ;
+dAnimalCategory(sAnimalCategory, 'Scenario2', sYear) = sum(sStable, vAnimals.L(sStable, sAnimalCategory)) ;
+dAnimalGroup(sSectors, 'Scenario2', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
+dLivestockUnits('Scenario2', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario2', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
 Solve Scenario3 maximizing vAmmoniaEmissionRegion using lp ;
 
@@ -340,6 +369,9 @@ dImpactExploitation(sExploitation, 'Scenario3', sYear) =  (vAmmoniaEmissionExplo
 dImpactRegion('Scenario3', sYear) = sum(sExploitation, dImpactExploitation(sExploitation, 'Scenario3', sYear)) ;
 dModelStat('Scenario3', sYear) = Scenario3.MODELSTAT ;
 dSolveStat('Scenario3', sYear) = Scenario3.SOLVESTAT ;
+dAnimalCategory(sAnimalCategory, 'Scenario3', sYear) = sum(sStable, vAnimals.L(sStable, sAnimalCategory)) ;
+dAnimalGroup(sSectors, 'Scenario3', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
+dLivestockUnits('Scenario3', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario3', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
 Solve Scenario4 maximizing vAmmoniaEmissionRegion using lp ;
 
@@ -350,6 +382,9 @@ dImpactRegion('Scenario4', sYear) = sum(sExploitation, dImpactExploitation(sExpl
 iAmmoniaEmissionExploitation(sExploitation, 'Scenario4') =  vAmmoniaEmissionExploitation.l(sExploitation) ;
 dModelStat('Scenario4', sYear) = Scenario4.MODELSTAT ;
 dSolveStat('Scenario4', sYear) = Scenario4.SOLVESTAT ;
+dAnimalCategory(sAnimalCategory, 'Scenario4', sYear) = sum(sStable, vAnimals.L(sStable, sAnimalCategory)) ;
+dAnimalGroup(sSectors, 'Scenario4', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
+dLivestockUnits('Scenario4', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario4', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
 Solve Scenario5 minimizing vTotalADS using lp      ;
 
@@ -360,6 +395,9 @@ dImpactRegion('Scenario5', sYear) = sum(sExploitation, dImpactExploitation(sExpl
 iAmmoniaEmissionExploitation(sExploitation, 'Scenario5') =  vAmmoniaEmissionExploitation.l(sExploitation) ;
 dModelStat('Scenario5', sYear) = Scenario5.MODELSTAT ;
 dSolveStat('Scenario5', sYear) = Scenario5.SOLVESTAT ;
+dAnimalCategory(sAnimalCategory, 'Scenario5', sYear) = sum(sStable, vAnimals.L(sStable, sAnimalCategory)) ;
+dAnimalGroup(sSectors, 'Scenario5', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
+dLivestockUnits('Scenario5', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario5', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
 Solve Scenario6 minimizing vTotalADS using lp      ;
 
@@ -370,6 +408,9 @@ dImpactRegion('Scenario6', sYear) = sum(sExploitation, dImpactExploitation(sExpl
 iAmmoniaEmissionExploitation(sExploitation, 'Scenario6') =  vAmmoniaEmissionExploitation.l(sExploitation) ;
 dModelStat('Scenario6', sYear) = Scenario6.MODELSTAT ;
 dSolveStat('Scenario6', sYear) = Scenario6.SOLVESTAT ;
+dAnimalCategory(sAnimalCategory, 'Scenario6', sYear) = sum(sStable, vAnimals.L(sStable, sAnimalCategory)) ;
+dAnimalGroup(sSectors, 'Scenario6', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
+dLivestockUnits('Scenario6', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario6', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
 *Before 2020: linear reduction from zero in 2015 to 2% in 2020
 EmissionNEC$(ord(sYear) <= 5) = (1-0.01*(0.4*ord(sYear)))* iMaxAmmoniaRegion ;
@@ -381,4 +422,4 @@ EmissionNEC$(ord(sYear) > 5) = (1 - 0.01*(1.1*ord(sYear)-3.5)) * iMaxAmmoniaRegi
 
 *$batinclude Reporting.gms
 
-execute_unload 'resultsDynamic.gdx' dAmmoniaEmissionExploitation, dAmmoniaEmissionREgion, dImpactExploitation, dImpactRegion
+execute_unload 'resultsDynamic.gdx' dAmmoniaEmissionExploitation, dAmmoniaEmissionREgion, dImpactExploitation, dImpactRegion, dAnimalCategory, dAnimalGroup, dLivestockUnits
