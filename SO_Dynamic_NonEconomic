@@ -3,7 +3,7 @@
 * Author    : David De Pue
 * Version   : 1.1
 * Start Date      : 9-September-2017
-* Changed   : 27-September-2017
+* Changed   :   27-September-2017
 * Changed
 * Remarks:
 *Dataset VLM farms Flanders (permitted animals, stable type)
@@ -145,7 +145,7 @@ Else
 parameter
 pYearOfPermit(sExploitation) ;
 
-option Seed = 1 ;
+option Seed = 3 ;
 
 pYearOfPermit(sExploitation) = uniformINT(1996, 2015) ;
 
@@ -399,6 +399,11 @@ dAnimalCategory(sAnimalCategory, 'Scenario5', sYear) = sum(sStable, vAnimals.L(s
 dAnimalGroup(sSectors, 'Scenario5', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
 dLivestockUnits('Scenario5', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario5', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
+*Before 2020: linear reduction from zero in 2015 to 2% in 2020
+EmissionNEC$(ord(sYear) <= 5) = (1-0.01*(0.4*ord(sYear)))* iMaxAmmoniaRegion ;
+*2020-2035: linear reduction with 2% in 2020 in 13% 2030
+EmissionNEC$(ord(sYear) > 5) = (1 - 0.01*(1.1*ord(sYear)-3.5)) * iMaxAmmoniaRegion ;
+
 Solve Scenario6 minimizing vTotalADS using lp      ;
 
 dAmmoniaEmissionExploitation(sExploitation, 'Scenario6', sYear) = vAmmoniaEmissionExploitation.l(sExploitation)     ;
@@ -412,14 +417,10 @@ dAnimalCategory(sAnimalCategory, 'Scenario6', sYear) = sum(sStable, vAnimals.L(s
 dAnimalGroup(sSectors, 'Scenario6', sYear) = sum(sSectors_AnimalCategory(sSectors, sAnimalCategory), sum(sStable, vAnimals.L(sStable, sAnimalCategory))) ;
 dLivestockUnits('Scenario6', sYear) =  sum(sAnimalCategory, (dAnimalCategory(sAnimalCategory, 'Scenario6', sYear) *  pLiveStockUnits(sAnimalCategory))) ;
 
-*Before 2020: linear reduction from zero in 2015 to 2% in 2020
-EmissionNEC$(ord(sYear) <= 5) = (1-0.01*(0.4*ord(sYear)))* iMaxAmmoniaRegion ;
-*2020-2035: linear reduction with 2% in 2020 in 13% 2030
-EmissionNEC$(ord(sYear) > 5) = (1 - 0.01*(1.1*ord(sYear)-3.5)) * iMaxAmmoniaRegion ;
 
 
 )  ;
 
 *$batinclude Reporting.gms
 
-execute_unload 'resultsDynamic.gdx' dAmmoniaEmissionExploitation, dAmmoniaEmissionREgion, dImpactExploitation, dImpactRegion, dAnimalCategory, dAnimalGroup, dLivestockUnits
+execute_unload 'resultsDynamicS3.gdx' dAmmoniaEmissionExploitation, dAmmoniaEmissionREgion, dImpactExploitation, dImpactRegion, dAnimalCategory, dAnimalGroup, dLivestockUnits
