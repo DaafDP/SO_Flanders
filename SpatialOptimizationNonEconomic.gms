@@ -29,7 +29,7 @@ sCoordinates /X, Y/
 sImpactScores /ADS, SS/
 sSectors /Runderen, Varkens,  Pluimvee,  Andere, Paarden/
 sSectors_AnimalCategory(sSectors, sAnimalCategory)
-sScen /sc1, sc2, sc3/
+sScen /sc1*sc4/
 sScenario(sScen)
 ;
 
@@ -66,6 +66,7 @@ Set sClass /Green, Orange, Red/
     sStable_StableType(sStable, sStableType)
     sStable_NIS(sStable, sNIS)
     sExploitation_NIS(sExploitation, sNIS)
+    sAnimalCategory_Stabletype(sAnimalCategory, sStableType)
 ;
 
 option sStable_Exploitation <= sID  ;
@@ -73,9 +74,11 @@ option sExploitation_Farmer <= sID ;
 option sStable_StableType <= sID ;
 option sStable_NIS <= sID ;
 option sExploitation_NIS <= sID ;
+option sAnimalCategory_Stabletype <= pEmissionFactor ;
 
 Parameter
 iPermittedAnimals(sExploitation) number of types of animals that are permitted in exploitation
+iMaxAmmoniaStable(sStable)
 iMaxAmmoniaSource(sExploitation)
 iMaxAmmoniaRegion
 iMaxSS(sExploitation)
@@ -87,6 +90,8 @@ iMaxADSRegion
 
 iPermittedAnimals(sExploitation) = sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory), rel_ne(pAnimals(sStable, sAnimalCategory),0))  ;
 
+iMaxAmmoniaStable(sStable) = sum((sAnimalCategory, sStable_StableType(sStable, sStableType)), pAnimals(sStable, sAnimalCategory) * pEmissionFactor(sAnimalCategory, sStableType)) ;
+
 
 iMaxAmmoniaSource(sExploitation) =  sum((sStable_Exploitation(sStable, sExploitation), sStable_StableType(sStable, sStableType), sAnimalCategory), (pEmissionFactor(sAnimalCategory, sStableType) *
                                  pAnimals(sStable, sAnimalCategory))) ;
@@ -96,8 +101,6 @@ iMaxSS(sExploitation) =   (iMaxAmmoniaSource(sExploitation)/5000)* pLocationImpa
 
 iMaxADS(sExploitation) =  (iMaxAmmoniaSource(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS') ;
 iMaxADSRegion = sum(sExploitation, iMaxADS(sExploitation))      ;
-
-$exit
 
 Loop(sClass,
 iTotalClassNumbers(sClass) = 0
@@ -115,6 +118,11 @@ Else
    iTotalClassNumbers('Orange') = iTotalClassNumbers('Orange')+1 ;  )
    ;
 ) ;
+
+Parameter pBestEF(sAnimalCategory) ;
+*Best practice animal housing (lowest emission Factor) ;
+
+pBestEF(sAnimalCategory) = smin(sAnimalCategory_Stabletype(sAnimalCategory, sStableType), pEmissionFactor(sAnimalCategory, sStableType))  ;
 
 ********************************************************************************
 ********************************Model*******************************************
@@ -179,6 +187,7 @@ pSolveSTat = Scenario1.SOLVESTAT         ;
 
 execute_unload 'sc1.gdx'
 
+$ontext
 *-------------------------------------------------------------------------------
 *Scenario 2: Efficiency check: Total ADS max.(sc1), max. vAmmoniaEmisison, no individual farm constraints
 *-------------------------------------------------------------------------------
@@ -198,7 +207,7 @@ Option lp = CPLEX ;
 
 Solve Scenario2 maxmizing vAmmoniaEmissionRegion using lp ;
 
-$batinclude Reporting.gms
+*$batinclude Reporting.gms
 
 Parameter pModelStat, pSolveStat ;
 
@@ -208,8 +217,10 @@ pSolveSTat = Scenario2.SOLVESTAT         ;
 
 execute_unload 'sc2.gdx'
 
+$offtext
+
 *-------------------------------------------------------------------------------
-**Scenario 3: Effectivity check, minimize ADS, emission bigger than sc1---------
+**Scenario 2: Effectivity check, minimize ADS, emission bigger than sc1---------
 *-------------------------------------------------------------------------------
 
 Variable
@@ -217,22 +228,65 @@ vTotalADS
 ;
 
 Equation
-eqTotalADSRegionSc3
+eqTotalADSRegionSc2
 eqAmmoniaFloor ;
 
-eqTotalADSRegionSc3..
+eqTotalADSRegionSc2..
 vTotalADS =e= sum(sExploitation, (vAmmoniaEmissionExploitation(sExploitation)/5000)* pLocationImpact(sExploitation, 'ADS')) ;
 
 eqAmmoniaFloor..
 vAmmoniaEmissionRegion =g= dEmissionRegion('sc1') ;
 
-pCurrentScenario = 3      ;
+pCurrentScenario = 2      ;
 
-Model Scenario3 /Scenario1 - eqSignificanceScore + eqTotalADSRegionSc3 + eqAmmoniaFloor/ ;
+Model Scenario2 /Scenario1 - eqSignificanceScore + eqTotalADSRegionSc2 + eqAmmoniaFloor/ ;
 
 Option lp = CPLEX ;
 
-Solve Scenario3 using lp minimizing vTotalADS ;
+Solve Scenario2 using lp minimizing vTotalADS ;
+
+$batinclude reporting.gms
+
+Parameter pModelStat, pSolveStat ;
+
+pModelStat = Scenario2.MODELSTAT         ;
+pSolveSTat = Scenario2.SOLVESTAT         ;
+
+execute_unload 'sc3.gdx'
+
+*-------------------------------------------------------------------------------
+**Scenario 3: PAN - Close red farms, allow orange farm to perform according to best practice (lowest emission factor)
+*If no improvement is possible: close
+*-------------------------------------------------------------------------------
+
+Equation
+eqOrange(sExploitation) Best practice (lowest EF)
+eqOrangeNoImprovement(sExploitation) If orange farm already best practice: close
+eqRed(sExploitation) Red farms: close
+eqAmmoniaEmissionSc2(sExploitation) Scen2 - Green farms - Orange farms before renewal - red farms before renewal
+;
+
+eqOrange(sExploitation)$(iFarmColour(sExploitation)= 2)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory),
+(pBestEF(sAnimalCategory) * vAnimals(sStable, sAnimalCategory))) ;
+
+eqAmmoniaEmissionSc2(sExploitation)$(iFarmColour(sExploitation) = 1)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sStable_StableType(sStable, sStableType), sAnimalCategory),
+(pEmissionFactor(sAnimalCategory, sStableType) * vAnimals(sStable, sAnimalCategory))) ;
+
+eqOrangeNoImprovement(sExploitation)$(sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory), (pBestEF(sAnimalCategory) * pAnimals(sStable, sAnimalCategory))) = iMaxAmmoniaSource(sExploitation))..
+vAmmoniaEmissionExploitation(sExploitation)$(iFarmColour(sExploitation) = 2) =e= 0 ;
+
+eqRed(sExploitation)$(iFarmColour(sExploitation)=3)..
+vAmmoniaEmissionExploitation(sExploitation) =e= 0 ;
+
+pCurrentScenario = 3      ;
+
+Model Scenario3 /Scenario1 - eqSignificanceScore - eqAmmoniaEmissionSource + eqAmmoniaEmissionSc2  + eqOrange + eqOrangeNoImprovement + eqRed/ ;
+
+Option lp = CPLEX ;
+
+Solve Scenario3 using lp maxmizing vAmmoniaEmissionRegion ;
 
 $batinclude reporting.gms
 
@@ -242,6 +296,34 @@ pModelStat = Scenario3.MODELSTAT         ;
 pSolveSTat = Scenario3.SOLVESTAT         ;
 
 execute_unload 'sc3.gdx'
+
+*-------------------------------------------------------------------------------
+*Scenario 4: Best practice animal housing for all exploitations at permit renewal, all farms remain in business with same capacity
+*-------------------------------------------------------------------------------
+Equation
+eqBestPractice(sExploitation) All farms become best practice
+;
+
+eqBestPractice(sExploitation)..
+vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sAnimalCategory),
+(pBestEF(sAnimalCategory) * vAnimals(sStable, sAnimalCategory))) ;
+
+pCurrentScenario = 4      ;
+
+Model Scenario4 /Scenario1 - eqSignificanceScore - eqAmmoniaEmissionSource + eqBestPractice/ ;
+
+Option lp = CPLEX ;
+
+Solve Scenario4 using lp maxmizing vAmmoniaEmissionRegion ;
+
+$batinclude reporting.gms
+
+Parameter pModelStat, pSolveStat ;
+
+pModelStat = Scenario4.MODELSTAT         ;
+pSolveSTat = Scenario4.SOLVESTAT         ;
+
+execute_unload 'sc4.gdx'
 
 ********************************************************************************
 **********Writing GDX with all relevant data************************************
