@@ -11,6 +11,7 @@ EMAV <- read.csv("EMAV.csv")
 library(gdxrrw)
 library(reshape2)
 library(plyr)
+library(readxl)
 igdx("C:/GAMS/win64/24.7/")
 
 #Loop through 3 seeds (cfr Coupling_Data_Locations)
@@ -145,11 +146,47 @@ sID <- as.data.frame(apply(sID, 2, function(x){
 attr(sID, "symName") <- "sID"
 attr(sID, "domains") <- c("sStable", "sExploitation", "sNIS", "sFarmer", "sStableType")
 
+#AEA-list (Ammoniak-emissie arme stalsystemen)
+AEA <- data.frame(read_excel("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataEconomic/DataKWIN_Stalsystemen_PASlijst_AEAlijst.xlsx",
+                    sheet=1))
+
+AEA_Ref <- subset(AEA, Ref=="Referentie ")
+AEA_Ref <- AEA_Ref[,c("VLM", "Diercat", "InvPerDP", "JaarKostDP")]
+AEA_Ref <- AEA_Ref[-1,]
+AEA <- AEA[-which(AEA$Ref == "Referentie "),]
+AEA <- AEA[,4:9]
+AEA[,3] <- NULL
+AEA[,4] <- NULL
+AEA <- na.omit(AEA) 
+
+AEA_Ref <- melt(AEA_Ref, id.vars=c("VLM", "Diercat"))
+AEA_Ref[is.na(AEA_Ref)] <- 0
+colnames(AEA_Ref) <- c("i", "j", "k", "value")
+
+AEA <- melt(AEA, id.vars=c("VLM", "Diercat"))
+colnames(AEA) <- c("i", "j", "k", "value")
+AEA$i <- as.factor(AEA$i)
+AEA$j <- as.factor(AEA$j)
+AEA$k <- as.factor(AEA$k)
+AEA$value <- as.numeric(AEA$value)
+
+attr(AEA, "symName") <- "pAEA"
+attr(AEA, "domains") <- c("sStableType", "sAnimalCategory", "sCost")
+
+attr(AEA_Ref, "symName") <- "pAEA_Ref"
+attr(AEA_Ref, "domains") <- c("sStableType", "sAnimalCategory", "sCost")
+
+AEA_Ref$i <- as.factor(AEA_Ref$i)
+AEA_Ref$j <- as.factor(AEA_Ref$j)
+AEA_Ref$k <- as.factor(AEA_Ref$k)
+AEA_Ref$value <- as.numeric(AEA_Ref$value)
+
+
 #Bundling all data in gdx-file
 Directoryname <- paste("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders", 
                        as.character(i), ".gdx", sep="")
 wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
-                   Animals, EmissionFactor, Sector)
+                   Animals, EmissionFactor, Sector, AEA, AEA_Ref)
 
 }

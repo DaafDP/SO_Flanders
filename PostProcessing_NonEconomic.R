@@ -125,7 +125,7 @@ SectorCols <- brewer.pal(5, name='Accent')
 ggplot(data=subset(dEmissionAnimalGroup, Scenario != "max"), 
         aes(x=Scenario, y=Emission, group=Sector, colour=Sector, shape=Sector))+
         geom_line(lty="dotted") +
-        geom_point(size=2)+
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
                     axis.title = element_text(size = 18),
@@ -152,7 +152,7 @@ EmissionAnimalGroupRelative$EmissionRelative <- apply(EmissionAnimalGroupRelativ
 ggplot(data=EmissionAnimalGroupRelative, 
        aes(x=Scenario, y=EmissionRelative, group=Sector, colour=Sector, shape=Sector))+
        geom_line(lty="dotted") +
-        geom_point(size=2)+
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -193,8 +193,13 @@ max=as.numeric(subset(dAnimalsGroup, Sector=="Pigs" & Scenario=="max")[2])
 ggplot(data=subset(dAnimalsGroup, Sector=="Pigs" & Scenario != "max"),  
        aes(x=Scenario, y=Number, group=1))+
         geom_line(lty="dotted") +
-        geom_point(size=2)+
-        #theme(legend.title=element_blank())+
+        geom_point(size=3)+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+        
         geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of pigs") + xlab(NULL)
 
@@ -204,8 +209,12 @@ ggplot(data=subset(dAnimalsGroup, Sector=="Cattle" & Scenario != "max"),
        aes(x=Scenario, y=Number, group=1))+
         geom_line(lty="dotted") +
         geom_point(size=2)+
-        #theme(legend.title=element_blank())+
-        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+           geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of cattle") + xlab(NULL)
 
 #Poultry
@@ -214,7 +223,12 @@ ggplot(data=subset(dAnimalsGroup, Sector=="Poultry" & Scenario != "max"),
        aes(x=Scenario, y=Number, group=1))+
         geom_line(lty="dotted") +
         geom_point(size=2)+
-        #theme(legend.title=element_blank())+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+  
         geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of poultry") + xlab(NULL)
 
@@ -224,7 +238,12 @@ ggplot(data=subset(dAnimalsGroup, Sector=="Others" & Scenario != "max"),
        aes(x=Scenario, y=Number, group=1))+
         geom_line(lty="dotted") +
         geom_point(size=2)+
-        #theme(legend.title=element_blank())+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
         geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of others") + xlab(NULL)
 #Horses
@@ -233,8 +252,12 @@ ggplot(data=subset(dAnimalsGroup, Sector=="Horses" & Scenario != "max"),
        aes(x=Scenario, y=Number, group=1))+
         geom_line(lty="dotted") +
         geom_point(size=2)+
-        #theme(legend.title=element_blank())+
-        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+        geom_hline(aes(yintercept=max), lty="dashed", colour="red")+
         ylab("Total number of horses") + xlab(NULL)
 
 #Relative to maximum
@@ -248,8 +271,13 @@ AnimalGroupRelative$NumberRelative <- apply(AnimalGroupRelative, 1, function(x){
 ggplot(data=AnimalGroupRelative, 
        aes(x=Scenario, y=NumberRelative, group=Sector, colour=Sector, shape=Sector))+
         geom_line(lty='dotted') +
-        geom_point(size=2)+
-        theme(legend.title=element_blank())+
+        geom_point(size=3)+
+        theme(legend.title=element_blank(), 
+              plot.title = element_text(size = 15, face = "bold"),
+              axis.title = element_text(size = 18),
+              legend.title = element_text(size = 18),
+              legend.text = element_text(size = 18),
+              axis.text = element_text(size = 18))+
         ylab("Relative number of animals (1=maximum)") + xlab(NULL)
 
 #ClosedStables per stable Type
@@ -318,8 +346,8 @@ dAmmoniaEmissionRegion$Scenario <- mgsub(original, new, dAmmoniaEmissionRegion$S
 
 ggplot(data=subset(dAmmoniaEmissionRegion, Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC")),
        aes(x=Year, y=Emission, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size =1) +
+        geom_point(size =3)+
         #scale_colour_discrete(labels = c(1:6))+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
@@ -340,8 +368,8 @@ dImpactRegion$Scenario <- mgsub(original, new, dImpactRegion$Scenario)
 
 ggplot(data=subset(dImpactRegion, Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC")), 
        aes(x=Year, y=TotalADS, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -357,8 +385,8 @@ Ammonia_Impact$Scenario <- mgsub(original, new, Ammonia_Impact$Scenario)
 
 ggplot(data=subset(Ammonia_Impact, Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC")),
        aes(x=Year, y=Ratio, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -376,8 +404,8 @@ dLivestockUnits$Scenario <- mgsub(original, new, dLivestockUnits$Scenario)
 
 ggplot(data=subset(dLivestockUnits, Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC")),
        aes(x=Year, y=TotalLSU, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -395,8 +423,8 @@ dAnimalGroup$Scenario <- mgsub(original, new, dAnimalGroup$Scenario)
 
 ggplot(data=subset(dAnimalGroup, Sector=="Runderen" & Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC") ), 
        aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -407,8 +435,8 @@ ggplot(data=subset(dAnimalGroup, Sector=="Runderen" & Scenario %in% c("<5% SS", 
 
 ggplot(data=subset(dAnimalGroup, Sector=="Varkens" & Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC") ), 
        aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -419,8 +447,8 @@ ggplot(data=subset(dAnimalGroup, Sector=="Varkens" & Scenario %in% c("<5% SS", "
 
 ggplot(data=subset(dAnimalGroup, Sector=="Pluimvee" & Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC") ), 
        aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -431,8 +459,8 @@ ggplot(data=subset(dAnimalGroup, Sector=="Pluimvee" & Scenario %in% c("<5% SS", 
 
 ggplot(data=subset(dAnimalGroup, Sector=="Paarden" & Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC") ), 
        aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -443,8 +471,8 @@ ggplot(data=subset(dAnimalGroup, Sector=="Paarden" & Scenario %in% c("<5% SS", "
 
 ggplot(data=subset(dAnimalGroup, Sector=="Andere" & Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC")), 
        aes(x=Year, y=Number, group=Scenario, colour=Scenario, shape=Scenario))+
-        geom_line() +
-        geom_point()+
+        geom_line(size=1) +
+        geom_point(size=3)+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
               axis.title = element_text(size = 18),
@@ -515,7 +543,7 @@ Ammonia$Year <- as.numeric(Ammonia$Year)
 
 ggplot(data=subset(Ammonia, Scenario %in% c("<5% SS", "PAN", "BAT", "SO ref", "SO NEC")),
        aes(x=Year, y=Emission, group=Scenario, colour=Scenario, shape=Iteration))+
-        geom_point()+
+        geom_point(size=3)+
         #scale_colour_discrete(labels = c(1:6))+
         theme(legend.title=element_blank(), 
               plot.title = element_text(size = 15, face = "bold"),
