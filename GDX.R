@@ -181,12 +181,51 @@ AEA_Ref$j <- as.factor(AEA_Ref$j)
 AEA_Ref$k <- as.factor(AEA_Ref$k)
 AEA_Ref$value <- as.numeric(AEA_Ref$value)
 
+#PAS-list (Emissiebeperkende technieken)
+PAS <-  data.frame(read_excel("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataEconomic/DataKWIN_Stalsystemen_PASlijst_AEAlijst.xlsx",
+                              sheet=2))
+
+PAS <- PAS[,c(4,5,7,8,10)]
+PAS <- na.omit(PAS)
+
+ReductionEFPAS <- PAS[,c(1:3)]
+colnames(ReductionEFPAS) <- c("i", "j", "value")
+ReductionEFPAS$i <- as.factor(ReductionEFPAS$i)
+ReductionEFPAS$j <- as.factor(ReductionEFPAS$j)
+attr(ReductionEFPAS, "symName") <- "pReductionEFPAS"
+attr(ReductionEFPAS, "domains") <- c("sPAS", "sAnimalCategory")
+
+CostPAS <- PAS[,c(1:2,4:5)] 
+CostPAS <- melt(CostPAS, id.vars=c("PAS", "Diercat"))
+
+
+colnames(CostPAS) <- c("i", "j", "k", "value")
+CostPAS$i <- as.factor(CostPAS$i)
+CostPAS$j <- as.factor(CostPAS$j)
+CostPAS$k <- as.factor(CostPAS$k)
+attr(CostPAS, "symName") <-"pCostPAS"
+attr(CostPAS, "domains") <- c("sPAS", "sAnimalCategory", "sCost")
+
+#GrossMargins
+GM <- data.frame(read_excel("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataEconomic/GrossMargins.xlsx",
+                                    sheet=1))
+
+GM <- GM[,-(6:7)]
+
+GM <- melt(GM, id.vars = c("FarmType", "jaarplaats", "Diercat"))
+GM$jaarplaats <- NULL
+colnames(GM) <- c("i", "j", "k", "value")
+GM$i <- as.factor(GM$i)
+GM$j <- as.factor(GM$j)
+GM$k <- as.factor(GM$k)
+attr(GM, "symName") <- "pGM"
+attr(GM, "domains") <- c("sFarmType", "sAnimalCategory", "sStatistic")
 
 #Bundling all data in gdx-file
 Directoryname <- paste("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders", 
                        as.character(i), ".gdx", sep="")
 wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
-                   Animals, EmissionFactor, Sector, AEA, AEA_Ref)
+                   Animals, EmissionFactor, Sector, AEA, AEA_Ref, ReductionEFPAS, CostPAS, GM)
 
 }
