@@ -2,7 +2,7 @@
 rm(list=ls())
 #dev.off()
 
-setwd("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataHandling_VLM/")
+setwd("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataHandling_VLM/")
 
 #Loading data 
 EMAV <- read.csv("EMAV.csv")
@@ -12,7 +12,7 @@ library(gdxrrw)
 library(reshape2)
 library(plyr)
 library(readxl)
-igdx("C:/GAMS/win64/24.7/")
+igdx("C:/GAMS/win64/24.6/")
 
 #Loop through 3 seeds (cfr Coupling_Data_Locations)
 
@@ -34,7 +34,9 @@ Sources$NIS <- paste("n", Sources$NIS, sep="")
 Sources$StableType <- gsub(" ", "_", Sources$StableType)
 Sources$StableType <- gsub(".", "_", Sources$StableType, fixed=TRUE)
 Sources$StableType <- gsub("-", "_", Sources$StableType, fixed=TRUE)
-Sources[Sources$StableType == "",'StableType'] <- "GEEN"
+Sources[Sources$StableType == "GEEN",'StableType'] <- "UNKNOWN"
+Sources[Sources$StableType == "",'StableType'] <- "UNKNOWN"
+
 
 #Recode exploitations and farmers
 ExploitationOld <- as.character(unique(Sources$Exploitation))
@@ -117,9 +119,18 @@ EmissionFactor$STALCODE <- gsub(".", "_", EmissionFactor$STALCODE,  fixed = TRUE
 EmissionFactor$STALCODE <- gsub("-", "_", EmissionFactor$STALCODE, fixed= TRUE)
 
 #Air Scrubber and "GEEN"
-EF_Other <- read.csv(file = "EmissieOverig.csv")
+EF_Other <- read.csv("EmissieOverig.csv")
 EF_Other$Opmerking <- NULL
 EmissionFactor <- rbind(EmissionFactor, EF_Other)
+EmissionFactor$STALCODE[EmissionFactor$STALCODE == "GEEN"] <- "UNKNOWN"
+EmissionFactor$STALCODE <- sub("S_1_MENGM", "S_1", EmissionFactor$STALCODE)
+EmissionFactor$STALCODE <- sub("S_1_STALM", "S_1", EmissionFactor$STALCODE)
+EmissionFactor$STALCODE <- sub("S_2_MENGM", "S_2", EmissionFactor$STALCODE)
+EmissionFactor$STALCODE <- sub("S_2_STALM", "S_2", EmissionFactor$STALCODE)
+EmissionFactor$STALCODE <- sub("S_3_MENGM", "S_3", EmissionFactor$STALCODE)
+EmissionFactor$STALCODE <- sub("S_3_STALM", "S_3", EmissionFactor$STALCODE)
+EmissionFactor <- unique(EmissionFactor)
+
 colnames(EmissionFactor) <- c("i", "j", "value")
 EmissionFactor$i <- as.factor(EmissionFactor$i)
 EmissionFactor$j <- as.factor(EmissionFactor$j)
@@ -147,42 +158,35 @@ attr(sID, "symName") <- "sID"
 attr(sID, "domains") <- c("sStable", "sExploitation", "sNIS", "sFarmer", "sStableType")
 
 #AEA-list (Ammoniak-emissie arme stalsystemen)
-AEA <- data.frame(read_excel("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataEconomic/DataKWIN_Stalsystemen_PASlijst_AEAlijst.xlsx",
+AEA <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/AEA.xlsx",
                     sheet=1))
 
-AEA_Ref <- subset(AEA, Ref=="Referentie ")
-AEA_Ref <- AEA_Ref[,c("VLM", "Diercat", "InvPerDP", "JaarKostDP")]
-AEA_Ref <- AEA_Ref[-1,]
-AEA <- AEA[-which(AEA$Ref == "Referentie "),]
-AEA <- AEA[,4:9]
-AEA[,3] <- NULL
-AEA[,4] <- NULL
-AEA <- na.omit(AEA) 
+AEA$X__1 <- NULL
 
-AEA_Ref <- melt(AEA_Ref, id.vars=c("VLM", "Diercat"))
-AEA_Ref[is.na(AEA_Ref)] <- 0
-colnames(AEA_Ref) <- c("i", "j", "k", "value")
+AEA <- melt(AEA, id.vars=c("sAnimalCategory", "sStableType"))
 
-AEA <- melt(AEA, id.vars=c("VLM", "Diercat"))
+colnames(AEA) <- c("i", "j", "k", "value")
+
 colnames(AEA) <- c("i", "j", "k", "value")
 AEA$i <- as.factor(AEA$i)
+AEA$j <- sub("S1_MENGM", "S_1", AEA$j)
+AEA$j <- sub("S1_STALM", "S_1", AEA$j)
+AEA$j <- sub("S2_MENGM", "S_2", AEA$j)
+AEA$j <- sub("S2_STALM", "S_2", AEA$j)
 AEA$j <- as.factor(AEA$j)
 AEA$k <- as.factor(AEA$k)
 AEA$value <- as.numeric(AEA$value)
 
+
+AEA <- unique(AEA)
+
 attr(AEA, "symName") <- "pAEA"
-attr(AEA, "domains") <- c("sStableType", "sAnimalCategory", "sCost")
+attr(AEA, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
 
-attr(AEA_Ref, "symName") <- "pAEA_Ref"
-attr(AEA_Ref, "domains") <- c("sStableType", "sAnimalCategory", "sCost")
 
-AEA_Ref$i <- as.factor(AEA_Ref$i)
-AEA_Ref$j <- as.factor(AEA_Ref$j)
-AEA_Ref$k <- as.factor(AEA_Ref$k)
-AEA_Ref$value <- as.numeric(AEA_Ref$value)
 
 #PAS-list (Emissiebeperkende technieken)
-PAS <-  data.frame(read_excel("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataEconomic/DataKWIN_Stalsystemen_PASlijst_AEAlijst.xlsx",
+PAS <-  data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/DataKWIN_Stalsystemen_PASlijst_AEAlijst.xlsx",
                               sheet=2))
 
 PAS <- PAS[,c(4,5,7,8,10)]
@@ -194,6 +198,10 @@ ReductionEFPAS$i <- as.factor(ReductionEFPAS$i)
 ReductionEFPAS$j <- as.factor(ReductionEFPAS$j)
 attr(ReductionEFPAS, "symName") <- "pReductionEFPAS"
 attr(ReductionEFPAS, "domains") <- c("sPAS", "sAnimalCategory")
+
+sPAS <- as.data.frame(unique(ReductionEFPAS$i))
+colnames(sPAS) <- "i"
+attr(sPAS, "symName") <- "sPAS"
 
 CostPAS <- PAS[,c(1:2,4:5)] 
 CostPAS <- melt(CostPAS, id.vars=c("PAS", "Diercat"))
@@ -207,10 +215,10 @@ attr(CostPAS, "symName") <-"pCostPAS"
 attr(CostPAS, "domains") <- c("sPAS", "sAnimalCategory", "sCost")
 
 #GrossMargins
-GM <- data.frame(read_excel("C:/Users/ddpue/Documents/Spatial Optimization Flanders/DataEconomic/GrossMargins.xlsx",
+GM <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/GrossMargins.xlsx",
                                     sheet=1))
 
-GM <- GM[,-(6:7)]
+GM <- GM[,-(6:8)]
 
 GM <- melt(GM, id.vars = c("FarmType", "jaarplaats", "Diercat"))
 GM$jaarplaats <- NULL
@@ -221,11 +229,16 @@ GM$k <- as.factor(GM$k)
 attr(GM, "symName") <- "pGM"
 attr(GM, "domains") <- c("sFarmType", "sAnimalCategory", "sStatistic")
 
+sFarmType <- as.data.frame(unique(GM$i))
+colnames(sFarmType) <- "i"
+attr(sFarmType, "symName") <- "sFarmType"
+
 #Bundling all data in gdx-file
-Directoryname <- paste("C:/Users/ddpue/Documents/Spatial Optimization Flanders/GAMS/FarmsFlanders", 
+Directoryname <- paste("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/GAMS/FarmsFlanders", 
                        as.character(i), ".gdx", sep="")
 wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
-                   Animals, EmissionFactor, Sector, AEA, AEA_Ref, ReductionEFPAS, CostPAS, GM)
+                   Animals, EmissionFactor, Sector, AEA, ReductionEFPAS, CostPAS, GM,
+         sPAS, sFarmType)
 
 }
