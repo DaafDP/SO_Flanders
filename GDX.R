@@ -94,10 +94,6 @@ Farmer <- as.data.frame(unique(sID$l))
 colnames(Farmer) <- "i"
 attr(Farmer, "symName") <- "sFarmer"
 
-StableType <- as.data.frame(unique(sID$m))
-colnames(StableType) <- "i"
-attr(StableType, "symName") <- "sStableType"
-
 #pAnimals(sStable, sAnimalCategory)
 Animals <- Stables[,6:43]
 Animals$Nr <- Sources$Nr
@@ -150,6 +146,12 @@ attr(Sector, "domains") <- c("sSectors", "sAnimalCategory")
 
 #Multidimensional set with all id characteristics
 sID <- Sources[c("Nr", "Exploitation", "NIS", "Farmer", "StableType")]
+sID$StableType <- sub("S_1_MENGM", "S_1", sID$StableType)
+sID$StableType <- sub("S_1_STALM", "S_1", sID$StableType)
+sID$StableType <- sub("S_2_MENGM", "S_2", sID$StableType)
+sID$StableType <- sub("S_2_STALM", "S_2", sID$StableType)
+sID$StableType <- sub("S_3_MENGM", "S_3", sID$StableType)
+sID$StableType <- sub("S_3_STALM", "S_3", sID$StableType)
 colnames(sID) <- c("i", "j", "k", "l", "m")
 sID <- as.data.frame(apply(sID, 2, function(x){
         as.factor(x)
@@ -157,33 +159,45 @@ sID <- as.data.frame(apply(sID, 2, function(x){
 attr(sID, "symName") <- "sID"
 attr(sID, "domains") <- c("sStable", "sExploitation", "sNIS", "sFarmer", "sStableType")
 
+StableType <- as.data.frame(unique(sID$m))
+colnames(StableType) <- "i"
+attr(StableType, "symName") <- "sStableType"
+
 #AEA-list (Ammoniak-emissie arme stalsystemen)
-AEA <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/AEA.xlsx",
+AEAcost <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/AEA.xlsx",
                     sheet=1))
 
-AEA$X__1 <- NULL
 
-AEA <- melt(AEA, id.vars=c("sAnimalCategory", "sStableType"))
+AEAcost <- melt(AEAcost, id.vars=c("sAnimalCategory", "sStableType"))
 
-colnames(AEA) <- c("i", "j", "k", "value")
+colnames(AEAcost) <- c("i", "j", "k", "value")
 
-colnames(AEA) <- c("i", "j", "k", "value")
-AEA$i <- as.factor(AEA$i)
-AEA$j <- sub("S1_MENGM", "S_1", AEA$j)
-AEA$j <- sub("S1_STALM", "S_1", AEA$j)
-AEA$j <- sub("S2_MENGM", "S_2", AEA$j)
-AEA$j <- sub("S2_STALM", "S_2", AEA$j)
-AEA$j <- as.factor(AEA$j)
-AEA$k <- as.factor(AEA$k)
-AEA$value <- as.numeric(AEA$value)
+colnames(AEAcost) <- c("i", "j", "k", "value")
+AEAcost$i <- as.factor(AEAcost$i)
+AEAcost$j <- as.factor(AEAcost$j)
+AEAcost$k <- as.factor(AEAcost$k)
+AEAcost$value <- as.numeric(AEAcost$value)
 
 
-AEA <- unique(AEA)
+attr(AEAcost, "symName") <- "pAEAcost"
+attr(AEAcost, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
 
-attr(AEA, "symName") <- "pAEA"
-attr(AEA, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
+AEAextracost <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/AEA.xlsx",
+                                      sheet=2))
+
+AEAextracost <- melt(AEAextracost, id.vars=c("sAnimalCategory", "sStableType"))
+
+colnames(AEAextracost) <- c("i", "j", "k", "value")
+
+colnames(AEAextracost) <- c("i", "j", "k", "value")
+AEAextracost$i <- as.factor(AEAextracost$i)
+AEAextracost$j <- as.factor(AEAextracost$j)
+AEAextracost$k <- as.factor(AEAextracost$k)
+AEAextracost$value <- as.numeric(AEAextracost$value)
 
 
+attr(AEAextracost, "symName") <- "pAEAextracost"
+attr(AEAextracost, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
 
 #PAS-list (Emissiebeperkende technieken)
 PAS <-  data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/DataKWIN_Stalsystemen_PASlijst_AEAlijst.xlsx",
@@ -238,7 +252,7 @@ Directoryname <- paste("C:/Users/ddpue/Documents/Werk/Spatial Optimization Fland
                        as.character(i), ".gdx", sep="")
 wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
-                   Animals, EmissionFactor, Sector, AEA, ReductionEFPAS, CostPAS, GM,
+                   Animals, EmissionFactor, Sector, AEAcost, AEAextracost, ReductionEFPAS, CostPAS, GM,
          sPAS, sFarmType)
 
 }
