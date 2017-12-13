@@ -184,9 +184,10 @@ attr(AEAcost, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
 
 AEAextracost <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/AEA.xlsx",
                                       sheet=2))
+#AEAextracost$JaarkostDP <- AEAextracost$JaarkostDP + 5 
 
 AEAextracost <- melt(AEAextracost, id.vars=c("sAnimalCategory", "sStableType"))
-
+ 
 colnames(AEAextracost) <- c("i", "j", "k", "value")
 
 colnames(AEAextracost) <- c("i", "j", "k", "value")
@@ -253,6 +254,6 @@ Directoryname <- paste("C:/Users/ddpue/Documents/Werk/Spatial Optimization Fland
 wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
                    Animals, EmissionFactor, Sector, AEAcost, AEAextracost, ReductionEFPAS, CostPAS, GM,
-         sPAS, sFarmType)
+         sPAS, sFarmType, squeeze=FALSE)
 
 }
