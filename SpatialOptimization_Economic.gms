@@ -46,25 +46,24 @@ vAnimals(sStable, sAnimalCategory)
 
 vEmissionAll.fx(sStable, sStableType)$(not sStableChoice(sStable, sStableType)) = 0 ;
 vAmmoniaEmissionStableType.fx(sStable, sStabletype)$(not sStableChoice(sStable, sStableType)) = 0 ;
-;
+*;
 
 Binary variable
 vStable(sStable, sStableType) Stable type
 vPAS(sStable, sPAS) PAS measure ;
 ;
 
+*sStableChoice(sStable, sStableType) = sStable_StableType(sStable, sStableType) ;
+
 *initialize stable: stable from sID (original stable)
-vStable.l(sPossibleStables(sStable, sStableType)) =  sStable_StableType(sStable, sStableType) ;
-vStable.fx(sStable, sStableType)$(not sPossibleStables(sStable, sStableType)) = sStable_StableType(sStable, sStableType) ;
+vStable.fx(sStable, sStableType)$(not sStableChoice(sStable, sStableType)) = 0 ;
 
 *initialize PAS: in beginning, no farm applies PAS measure
-vPAS.l(sStable, sPAS) =0 ;
+*vPAS.fx(sStable, sPAS) =0 ;
 vPAS.fx(sStable, sPAS)$(not sStable_PAS(sStable, sPAS)) = 0 ;
 
 *fix animals for which we don't have economic data: no farm type, or animal type 'others'
-vAnimalsExploitation.fx(sExploitation, sAnimalCategory)$(not sum(sFarmType, sExploitation_FarmType(sExploitation, sFarmType)) and (pAnimalExploitation(sExploitation, sAnimalCategory) > 0) and sFix(sExploitation)) = pAnimalExploitation(sExploitation, sAnimalCategory) ;
-
-vAnimalsExploitation.fx(sExploitation, sOtherAnimals)$((pAnimalExploitation(sExploitation, sOtherAnimals) > 0) and sFix(sExploitation)) = pAnimalExploitation(sExploitation, sOtherAnimals) ;
+vAnimalsExploitation.fx(sExploitation, sOtherAnimals)$((pAnimalExploitation(sExploitation, sOtherAnimals) > 0) and (not sNotFix(sExploitation))) = pAnimalExploitation(sExploitation, sOtherAnimals) ;
 
 Equations
 eqStable(sStable)
@@ -80,14 +79,13 @@ eqAmmoniaExploitationConstraint(sExploitation)
 eqStable(sStable)..
 sum(sStableType, vStable(sStable, sStableType)) =e= 1 ;
 
-eqPAS(sStable)$(sum(sPAS, sStable_PAS(sStable, sPAS)))..
+eqPAS(sStable)..
 sum(sPAS, vPAS(sStable, sPAS)) =l= 1 ;
 
 
 *Permit Constraint
 eqAnimals(sStable, sAnimalCategory)..
 vAnimals(sStable, sAnimalCategory) =l= pAnimals(sStable, sAnimalCategory)    ;
-* sum(sAnimalCategory_StableType(sAnimalCategory, sStableTye), 1) ;
 
 *https://www.leandro-coelho.com/linearization-product-variables/
 Equation
@@ -145,7 +143,7 @@ vAmmoniaEmissionStable(sStable) =e= sum(sStableType, vAmmoniaEmissionStableType(
 
 eqAmmoniaEmissionSource(sExploitation)..
 *vAmmoniaEmissionExploitation(sExploitation) =e= sum(sStable_Exploitation(sStable, sExploitation), vAmmoniaEmissionStable(sStable)) ;
-vAmmoniaEmissionExploitation(sExploitation) =e= sum((sStable_Exploitation(sStable, sExploitation), sStableType), (vAmmoniaEmissionStableType(sStable, sStableType))) ;
+vAmmoniaEmissionExploitation(sExploitation) =e= sum(sStable_Exploitation(sStable, sExploitation), vAmmoniaEmissionStable(sStable)) ;
 *- vAmmoniaEmissionStable_PAS(sStable, sStableType))) ;
 
 *Total ammonia emission
@@ -167,6 +165,7 @@ vAnimalsExploitation(sExploitation, sAnimalCategory)$(sum(sAnimalCategory2, pAni
 =e= sum(sAnimalCategory2, (vAnimalsExploitation(sExploitation, sAnimalCategory2) * pAnimalRatio(sExploitation, sAnimalCategory, sAnimalCategory2))) ;
 *$offtext
 
+$ontext
 Equation
 eqInvestmentAEAAll(sStable, sStableType)
 eqInvestmentAEA1(sStable, sStableType)
@@ -190,6 +189,7 @@ vInvestmentAEA(sStable, sStableType) =l= vInvestmentAEAall(sStable, sStableType)
 
 eqInvestmentAEA3(sStable, sStableType)$(pInvestmentAEAAll(sStable, sStableType) > 0)..
 vInvestmentAEA(sStable, sStableType) =g=   vInvestmentAEAall(sStable, sStableType) - (1 - vStable(sStable, sStableType)) *   pInvestmentAEAAll(sStable, sStableType) ;
+$offtext
 
 Equation
 eqYearlyAEAAll(sStable, sStableType)
@@ -199,23 +199,25 @@ eqYearlyAEA3(sStable, sStableType)
 ;
 
 positive variable
-*add small extra amount to prevent Stable Choice for empty stables
 vYearlyAEAall(sStable, sStableType)
 vYearlyAEA(sStable, sStableType)
 ;
 
-eqYearlyAEAAll(sStable, sStableType)$(pYearlyAEAAll(sStable, sStableType) > 0)..
-vYearlyAEAall(sStable, sStableType) =e= sum(sAnimalCategory, (vAnimals(sStable, sAnimalCategory) * pAEA(sAnimalCategory, sStableType, 'JaarkostDP')))     ;
+vYearlyAEA.fx(sStable, sStableType)$(not sPossibleStables(sStable, sStableType)) = 0 ;
 
-eqYearlyAEA1(sStable, sStableType)$(pYearlyAEAAll(sStable, sStableType) > 0)..
+eqYearlyAEAAll(sPossibleStables(sStable, sStableType))..
+vYearlyAEAall(sStable, sStableType) =e= sum(sAnimalCategory, (vAnimals(sStable, sAnimalCategory) * pAEAextracost(sAnimalCategory, sStableType, 'JaarkostDP')))     ;
+
+eqYearlyAEA1(sPossibleStables(sStable, sStableType))..
 vYearlyAEA(sStable, sStableType) =l= vStable(sStable, sStableType) * pYearlyAEAAll(sStable, sStableType) ;
 
-eqYearlyAEA2(sStable, sStableType)$(pYearlyAEAAll(sStable, sStableType) > 0)..
+eqYearlyAEA2(sPossibleStables(sStable, sStableType))..
 vYearlyAEA(sStable, sStableType) =l= vYearlyAEAall(sStable, sStableType) ;
 
-eqYearlyAEA3(sStable, sStableType)$(pYearlyAEAAll(sStable, sStableType) > 0)..
-vYearlyAEA(sStable, sStableType) =g=   vYearlyAEAall(sStable, sStableType) - (1 - vStable(sStable, sStableType)) * pYearlyAEAAll(sStable, sStableType) ;
+eqYearlyAEA3(sPossibleStables(sStable, sStableType))..
+vYearlyAEA(sStable, sStableType)  =g=   vYearlyAEAall(sStable, sStableType) - (1 - vStable(sStable, sStableType)) * pYearlyAEAAll(sStable, sStableType) ;
 
+$ontext
 Equation
 eqInvestmentPASAll(sStable, sPAS)
 eqInvestmentPAS1(sStable, sPAS)
@@ -228,16 +230,18 @@ vInvestmentPASall(sStable, sPAS)
 vInvestmentPAS(sStable, sPAS)
 ;
 
-eqInvestmentPASAll(sStable, sPAS)$(pInvestmentPASAll(sStable, sPAS) > 0)..
+vInvestmentPAS.fx(sStable, sPAS)$(not sStable_PAS(sStable, sPAS)) = 0 ;
+
+eqInvestmentPASAll(sStable_PAS(sStable, sPAS))..
 vInvestmentPASall(sStable, sPAS)   =e= sum(sAnimalCategory, (vAnimals(sStable, sAnimalCategory) * pCostPAS(sPAS, sAnimalCategory,'InvPerDP')))     ;
 
-eqInvestmentPAS1(sStable, sPAS)$(pInvestmentPASAll(sStable, sPAS) > 0)..
+eqInvestmentPAS1(sStable_PAS(sStable, sPAS))..
 vInvestmentPAS(sStable, sPAS) =l= vPAS(sStable, sPAS) * pInvestmentPASAll(sStable, sPAS) ;
 
-eqInvestmentPAS2(sStable, sPAS)$(pInvestmentPASAll(sStable, sPAS) > 0)..
+eqInvestmentPAS2(sStable_PAS(sStable, sPAS))..
 vInvestmentPAS(sStable, sPAS)=l= vInvestmentPASall(sStable, sPAS) ;
 
-eqInvestmentPAS3(sStable, sPAS)$(pInvestmentPASAll(sStable, sPAS) > 0)..
+eqInvestmentPAS3(sStable_PAS(sStable, sPAS))..
 vInvestmentPASall(sStable, sPAS) =g=  vInvestmentPASall(sStable, sPAS)  - (1 - vPAS(sStable, sPAS)) *  pInvestmentPASAll(sStable, sPAS) ;
 
 Equation
@@ -252,82 +256,78 @@ vYearlyPASall(sStable, sPAS)
 vYearlyPAS(sStable, sPAS)
 ;
 
-eqYearlyPASAll(sStable, sPAS)$(pYearlyPASAll(sStable, sPAS) > 0)..
+vYearlyPAS.fx(sStable, sPAS)$(not sStable_PAS(sStable, sPAS)) = 0 ;
+
+eqYearlyPASAll(sStable_PAS(sStable, sPAS))..
 vYearlyPASall(sStable, sPAS)   =e= sum(sAnimalCategory, (vAnimals(sStable, sAnimalCategory) * pCostPAS(sPAS, sAnimalCategory,'JaarKostDP')))     ;
 
-eqYearlyPAS1(sStable, sPAS)$(pYearlyPASAll(sStable, sPAS) > 0)..
+eqYearlyPAS1(sStable_PAS(sStable, sPAS))..
 vYearlyPAS(sStable, sPAS) =l= vPAS(sStable, sPAS) * pYearlyPASAll(sStable, sPAS) ;
 
-eqYearlyPAS2(sStable, sPAS)$(pYearlyPASAll(sStable, sPAS) > 0)..
+eqYearlyPAS2(sStable_PAS(sStable, sPAS))..
 vYearlyPAS(sStable, sPAS)=l= vYearlyPASall(sStable, sPAS) ;
 
-eqYearlyPAS3(sStable, sPAS)$(pYearlyPASAll(sStable, sPAS) > 0)..
+eqYearlyPAS3(sStable_PAS(sStable, sPAS))..
 vYearlyPASall(sStable, sPAS) =g=  vYearlyPASall(sStable, sPAS)  - (1 - vPAS(sStable, sPAS)) *  pYearlyPASAll(sStable, sPAS) ;
+$offtext
 
 *$ontext
-$ontext
 Positive Variable
-vInvestmentAEA(sStable, sStableType)
-vYearlyAEA(sStable, sStableType)
-vInvestmentPAS(sStable, sPAS)
+*vInvestmentPAS(sStable, sPAS)
 vYearlyPAS(sStable, sPAS)
 ;
 
 *Investment Cost Stables
 *https://www.leandro-coelho.com/linearization-product-variables/
 Equation
-eqInvestmentAEA(sStable, sStableType)
-eqYearlyAEA(sStable, sStableType)
-eqInvestmentPAS(sStable, sPAS)
+*eqInvestmentAEA(sStable, sStableType)
+*eqYearlyAEA(sStable, sStableType)
+*eqInvestmentPAS(sStable, sPAS)
 eqYearlyPAS(sStable, sPAS)
 ;
 
-eqInvestmentAEA(sStable, sStableType)$(pInvestmentAEAAll(sStable, sStableType) > 0)..
-vInvestmentAEA(sStable, sStableType) =e= pInvestmentAEAall(sStable, sStableType) * vStable(sStable, sStableType) ;
+*eqInvestmentAEA(sStable, sStableType)$(pInvestmentAEAAll(sStable, sStableType) > 0)..
+*vInvestmentAEA(sStable, sStableType) =e= pInvestmentAEAall(sStable, sStableType) * vStable(sStable, sStableType) ;
 
-eqYearlyAEA(sStable, sStableType)$(pYearlyAEAAll(sStable, sStableType) > 0)..
-vYearlyAEA(sStable, sStableType) =e= pYearlyAEAall(sStable, sStableType) * vStable(sStable, sStableType) ;
+*eqYearlyAEA(sStable, sStableType)$(pYearlyAEAAll(sStable, sStableType) > 0)..
+*vYearlyAEA(sStable, sStableType) =e= pYearlyAEAall(sStable, sStableType) * vStable(sStable, sStableType) ;
 
-eqInvestmentPAS(sStable_PAS(sStable, sPAS))..
-vInvestmentPAS(sStable, sPAS) =e= pInvestmentPASAll(sStable, sPAS) * vPAS(sStable, sPAS) ;
+*eqInvestmentPAS(sStable_PAS(sStable, sPAS))..
+*vInvestmentPAS(sStable, sPAS) =e= pInvestmentPASAll(sStable, sPAS) * vPAS(sStable, sPAS) ;
 
 eqYearlyPAS(sStable_PAS(sStable, sPAS))..
 vYearlyPAS(sStable, sPAS) =e=  pYearlyPASAll(sStable, sPAS) * vPAS(sStable, sPAS) ;
 
-$offtext
+*$offtext
 
 Variables
 vRevenue(sExploitation) Revenue animals
-vProfitExploitation(sExploitation) Profit animals + cost investment AEA & PAS + operational cost AEA & PAS(5years)
-vProfitTotal
+vEmissionAbatementCost Additional cost of emission abatement (CAPEX + OPEX) compared with reference
+vProfitExploitation(sExploitation) Profit animals - yearly additional cost AEA or PAS (CAPEX + OPEX)
+;
+
+Variable
+vProfitTotal       ;
+
+*vProfitTotal.lo = -1e10 ;
 
 Equation
 eqRevenue(sExploitation)
-eqOverallProfitExploitation(sExploitation)
+eqEmissionAbatement(sExploitation)
+eqProfitExploitation(sExploitation)
 eqOverallProfit
 ;
 
+eqEmissionAbatement(sExploitation)..
+vEmissionAbatementCost(sExploitation) =e= sum((sStableType, sStable_Exploitation(sStable, sExploitation)), vYearlyAEA(sStable, sStableType))
+                                 +   sum((sPAS, sStable_Exploitation(sStable, sExploitation)), vYearlyPAS(sStable, sPAS))     ;
+
 eqRevenue(sExploitation)..
-vRevenue(sExploitation) =e=  sum(sAnimalCategory, (vAnimalsExploitation(sExploitation, sAnimalCategory)*  pGrossMargin(sExploitation, sAnimalCategory)))
-                                 + sum(sAnimalCategory, (pPenalty(sExploitation, sAnimalCategory)* vAnimalsExploitation(sExploitation, sAnimalCategory)));
+vRevenue(sExploitation) =e=  sum(sAnimalCategory, (vAnimalsExploitation(sExploitation, sAnimalCategory)*  pGrossMargin(sExploitation, sAnimalCategory)))      ;
 
-
-*1 year - no time-discounting
-$ontext
-eqOverallProfitExploitation(sExploitation)..
-vProfitExploitation(sExploitation) =e= vRevenue(sExploitation) -
-sum((sStableType, sStable_Exploitation(sStable, sExploitation)), (vInvestmentAEA(sStable, sStableType) + vYearlyAEA(sStable, sStableType))) ;
-$offText
-
-*$ontext
-*5years, calculation Net present value with r=0.08
-eqOverallProfitExploitation(sExploitation)..
-vProfitExploitation(sExploitation) =e= - sum((sStableType, sStable_Exploitation(sStable, sExploitation)), vInvestmentAEA(sStable, sStableType))
-- sum((sStable_Exploitation(sStable, sExploitation), sPAS), vInvestmentPAS(sStable, sPAS))
-+ (vRevenue(sExploitation)
--sum((sStableType, sStable_Exploitation(sStable, sExploitation)), vYearlyAEA(sStable, sStableType))
- - sum((sPAS, sStable_Exploitation(sStable, sExploitation)), vYearlyPAS(sStable, sPAS)))*(((1.08**5)-1) /(0.08*(1.08**5))) ;
-*$offtext
+eqProfitExploitation(sExploitation)..
+vProfitExploitation(sExploitation) =e= vRevenue(sExploitation)
+- vEmissionAbatementCost(sExploitation) ;
 
 eqOverallProfit..
 vProfitTotal =e= sum(sExploitation, vProfitExploitation(sExploitation)) ;
@@ -346,8 +346,8 @@ option mip=CPLEX    ;
 
 option optcr = 0 ;
 
-*Solve test maximizing vAmmoniaEmissionRegion using mip ;
-Solve test maximizing vProfitTotal using mip ;
+Solve test minimizing vAmmoniaEmissionRegion using mip ;
+*Solve test maximizing vProfitTotal using mip ;
 
 Parameter dSumStableTypes(sStableType), dInitialStableType(sStableType), dSum1, dSum2 ;
 
@@ -376,7 +376,14 @@ eqSignificanceScore(sExploitation) Significance Score constraint
 
 
 eqSignificanceScore(sExploitation)..
-(vAmmoniaEmissionExploitation(sExploitation)/5000)* pLocationImpact(sExploitation, 'SS') =l= pSStreshold ;
+(vAmmoniaEmissionExploitation(sExploitation)/5000)* pLocationImpact(sExploitation, 'SS') =l=  pSStreshold ;
+*pSStreshold ;
+
+*Add very low fake gross margin to animals without GM, to make sure that the model results has the maximum number of animals allowed
+pGrossMargin(sExploitation, sAnimalCategory)$((pAnimalExploitation(sExploitation, sAnimalCategory) > 0) and (pGrossMargin(sExploitation, sAnimalCategory)= 0))
+= 10E-9 ;
+
+
 
 Model Scenario1 /all/          ;
 
@@ -384,12 +391,15 @@ Option lp = CPLEX ;
 
 option optcr = 0 ;
 
+option reslim =  7200 ;
+
 Solve Scenario1 maximizing vProfitTotal using mip ;
+*Solve Scenario1 minimizing vAmmoniaEmissionRegion using mip ;
 
 *$batinclude Reporting.gms
 
-*If model changed stable type (vStable), but the new stable is empty (AEA cost: 0), than we change the solution back to the initial stable
-vStable.l(sStable, sStableType)$(vInvestmentAEA.l(sStable, sStableType) = 0) = sStable_StableType(sStable, sStableType) ;
+*If model changed stable type (vStable), but the new stable is empty (AEAyearly cost: 0), than we change the solution back to the initial stable
+*vStable.l(sStable, sStableType)$(vYearlyAEA.l(sStable, sStableType) = 0) = sStable_StableType(sStable, sStableType) ;
 
 parameter
 pModelStat, pSolveStat,dSumStableTypes(sStableType), dInitialStableType(sStableType), dSum1, dSum2, dTotalADS      ;
@@ -402,7 +412,26 @@ dSum1 = sum(sStableType, dInitialStableType(sStableType))      ;
 dSum2 = sum(sStableType, dSumStableTypes(sStableType)) ;
 dTotalADS = sum(sExploitation, (vAmmoniaEmissionExploitation.l(sExploitation) * pLocationImpact(sExploitation, 'ADS'))) ;
 
-execute_unload 'sc1bis.gdx'
+Set sAbatement /animalreduction, AEA/ ;
+
+parameter
+dAbatementCost(sStable, sAbatement) euro per kg NH3
+dAbatementCostAEA(sStable, sStableType)
+*dTest(sExploitation, sStable,
+;
+
+dAbatementCost(sStable, 'animalreduction')$(iMaxAmmoniaStable(sStable) > vAmmoniaEmissionStable.l(sStable)) = sum((sAnimalCategory, sStable_Exploitation(sStable, sExploitation)),
+        ((pAnimals(sStable, sAnimalCategory) - vAnimals.l(sStable, sAnimalCategory))*pGrossMargin(sExploitation, sAnimalCategory))) /
+(iMaxAmmoniaStable(sStable) - vAmmoniaEmissionStable.l(sStable))
+;
+
+dAbatementCostAEA(sStableChoice(sStable, sStableType))$(vEmissionAll.l(sStable, sStableType) < iMaxAmmoniaStable(sStable)) =
+vYearlyAEAall.l(sStable, sStableType) / (iMaxAmmoniaStable(sSTable) - vEmissionAll.l(sStable, sStableType)) ;
+
+dAbatementCost(sStable, 'AEA') = smax(sStableType,  dAbatementCostAEA(sStable, sStableType)) ;
+
+
+execute_unload 'sc1.gdx'
 
 $exit
 

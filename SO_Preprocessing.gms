@@ -2,10 +2,14 @@
 *=======================Data preprocessing and data input=======================
 *===============================================================================
 Set
+*sStable /s119*s173/
+*sExploitation /e75*e100/
 *sStable /s1*s44540/
-sStable /s1*s109/
+*sStable /s1*s173/
+sStable/s1*s3655/
 *sExploitation /e1*e23408/
-sExploitation /e1*e69/
+*sExploitation /e1*e100/
+sExploitation/e1*e2000/
 sNIS
 sStableType
 sFarmer /f1*f20709/
@@ -32,7 +36,8 @@ pAnimals(sStable, sAnimalCategory)
 pLocationImpact(sExploitation, sImpactscores)
 pEmissionFactor(sAnimalCategory, sStableType)
 pSourceLocation(sExploitation, sCoordinates)
-pAEA(sAnimalCategory, sStableType,  sCost)
+pAEAcost(sAnimalCategory, sStableType,  sCost)
+pAEAextracost(sAnimalCategory, sStableType, sCost)
 pReductionEFPAS(sPAS, sAnimalCategory)
 pCostPAS(sPAS, sAnimalCategory, sCost)
 pGM(sFarmType, sAnimalCategory, sStatistic)
@@ -42,8 +47,10 @@ pGM(sFarmType, sAnimalCategory, sStatistic)
 *FarmFlanders2.gdx: seed2 R
 *FarmFlanders3.gdx: seed3 R
 $gdxin FarmsFlanders1.gdx
-$load pAnimals, pLocationImpact, pEmissionFactor, pSourceLocation, pAEA, pReductionEFPAS, pCostPAS, pGM
+$load pAnimals, pLocationImpact, pEmissionFactor, pSourceLocation, pAEAcost, pAEAextracost, pReductionEFPAS, pCostPAS, pGM
 $gdxin
+
+pAEAextracost(sAnimalCategory, sStableType, sCost) = abs(pAEAextracost(sAnimalCategory, sStableType, sCost)) ;
 
 *******************************************************************************
 ********************Misc. Initial Parameters and MultiDsets*********************
@@ -245,8 +252,7 @@ pAnimalRatio(sExploitation, sAnimalCategory, sAnimalCategory2)$(ord(sAnimalCateg
 ********************************************************************************
 *****************************Gross Margin from normal distribution**************
 ********************************************************************************
-Parameter pGrossMargin(sExploitation, sAnimalCategory)     ;
-
+Parameter pGrossMargin(sExploitation, sAnimalCategory), pMaxProfit(sExploitation)     ;
 
 pGrossMargin(sExploitation, sAnimalCategory)$(pAnimalExploitation(sExploitation, sAnimalCategory) > 0)= sum(sExploitation_FarmType(sExploitation, sFarmType), normal(pGM(sFarmType, sAnimalCategory, 'GM'), pGM(sFarmType, sAnimalCategory, 'std')))
 ;
@@ -269,7 +275,7 @@ sEA(sStableType)
 sEligbleStablesAEA(sStable) stables for which choice of AEA can be made (NEA + pigs or poultry)
 sStableChoice(sStable, sStableType) ;
 
-option sAEA <= pAEA       ;
+option sAEA <= pAEAextraCost       ;
 
 sEA(sStableType) = yes ;
 
@@ -319,25 +325,29 @@ pInvestmentAEAAll(sStable, sStableType)
 pYearlyAEAAll(sStable, sStableType)
 pInvestmentPASAll(sStable, sPAS)
 pYearlyPASAll(sStable, sPAS)
-pTotalRevenue(sExploitation);
+pMaxRevenue(sExploitation)
+pMaxRevenueStable(sStable)
 *pTest(sStable, sStableType, sAnimalCategory)
 *pAEA_Max_Investment(sStable)
 *pAEA_Max_Yearly(sStable)
 *pPAS_Max_Investment(sStable)
 *pPAS_Max_Yearly(sStable);
+;
 
 pEmissionAll(sStableChoice(sStable, sStableType)) = sum(sAnimalCategory, (pAnimals(sStable, sAnimalCategory) * pEmissionFactor(sAnimalCategory, sStableType)))
 ;
 
-pInvestmentAEAAll(sEligbleStablesAEA, sEA) = sum(sAnimalCategory, (pAnimals(sEligbleStablesAEA, sAnimalCategory) * pAEA(sAnimalCategory, sEA, 'InvPerDP'))) ;
+pInvestmentAEAAll(sEligbleStablesAEA, sEA) = sum(sAnimalCategory, (pAnimals(sEligbleStablesAEA, sAnimalCategory) * pAEAcost(sAnimalCategory, sEA, 'InvPerDP'))) ;
 
-pYearlyAEAAll(sEligbleStablesAEA, sEA) = sum(sAnimalCategory, (pAnimals(sEligbleStablesAEA, sAnimalCategory) * pAEA(sAnimalCategory, sEA, 'JaarKostDP'))) ;
+pYearlyAEAAll(sEligbleStablesAEA, sEA) = sum(sAnimalCategory, (pAnimals(sEligbleStablesAEA, sAnimalCategory) * pAEAextracost(sAnimalCategory, sEA, 'JaarKostDP'))) ;
 
 pInvestmentPASAll(sStable_PAS(sStable, sPAS)) = sum(sAnimalCategory, (pAnimals(sStable, sAnimalCategory) * pCostPAS(sPAS, sAnimalCategory, 'InvPerDP')))   ;
 
 pYearlyPASAll(sStable_PAS(sStable, sPAS)) = sum(sAnimalCategory, (pAnimals(sStable, sAnimalCategory) * pCostPAS(sPAS, sAnimalCategory, 'JaarKostDP')))    ;
 
-pTotalRevenue(sExploitation) = sum(sAnimalCategory, (pAnimalExploitation(sExploitation, sAnimalCategory) * pGrossMargin(sExploitation, sAnimalCategory))) ;
+pMaxRevenue(sExploitation) = sum(sAnimalCategory, (pAnimalExploitation(sExploitation, sAnimalCategory) * pGrossMargin(sExploitation, sAnimalCategory))) ;
+
+pMaxRevenueStable(sStable) = sum(sAnimalCategory, pAnimals(sStable, sAnimalCategory) * sum(sStable_exploitation(sStable, sExploitation), pGrossMargin(sExploitation, sAnimalCategory))) ;
 
 *pAEA_Max_Investment(sStable) = sum(sStableType, pInvestmentAEAAll(sStable, sStableType))    ;
 
@@ -349,18 +359,9 @@ pTotalRevenue(sExploitation) = sum(sAnimalCategory, (pAnimalExploitation(sExploi
 *Exploitations
 Scalar pSStreshold /5/ ;
 
-Set sFix(sExploitation)
-    sNotFix(sExploitation) ;
+Set
+sNotFix(sExploitation) ;
 
-sFix(sExploitation)$((iMaxAmmoniaSource(sExploitation)/5000) * pLocationImpact(sExploitation, 'SS')<pSStreshold) = yes ;
-sNotFix(sExploitation) = yes ;
-sNotFix(sExploitation)$(sFix(sExploitation)) = no ;
-
-Parameter
-*Very low penalty (revenue) to prevent other animals in 'non-fix' cases from being reduced to zero
-*because revenue is very low, no considerable impact on vprofit
-pPenalty(sExploitation, sAnimalCategory) ;
-
-pPenalty(sNotFix, sOtherAnimals) = 0.000000001 ;
+sNotFix(sExploitation)$((iMaxAmmoniaSource(sExploitation)/5000) * pLocationImpact(sExploitation, 'SS')>pSStreshold) = yes ;
 
 execute_unloaddi 'SODat.gdx'
