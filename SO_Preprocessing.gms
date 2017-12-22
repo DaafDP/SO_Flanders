@@ -2,14 +2,20 @@
 *=======================Data preprocessing and data input=======================
 *===============================================================================
 Set
-*sStable /s119*s173/
-*sExploitation /e75*e100/
-*sStable /s1*s44540/
+*sStable /s117*s173/
+*sExploitation /e74*e100/
 *sStable /s1*s173/
-sStable/s1*s3655/
-*sExploitation /e1*e23408/
 *sExploitation /e1*e100/
+sStable/s1*s3655/
 sExploitation/e1*e2000/
+*sStable/s1*s7181/
+*sExploitation/e1*e4000/
+*sStable/s7182*s14428/
+*sExploitation/e4001*e8000/
+*sStable/s14429*s22840/
+*sExploitation/e8001*e12000/
+*sExploitation /e1*e23408/
+*sStable /s1*s44540/
 sNIS
 sStableType
 sFarmer /f1*f20709/
@@ -19,16 +25,20 @@ sCoordinates /X, Y/
 sImpactScores /ADS, SS/
 sSectors /Runderen, Varkens,  Pluimvee,  Andere, Paarden/
 sSectors_AnimalCategory(sSectors, sAnimalCategory)
-sScen /sc1*sc4/
-sScenario(sScen)
+*sScen /sc1*sc4/
+*sScenario(sScen)
 sCost /InvPerDP, JaarKostDP/
 sPAS
+*sPAS /PAS_R_1_13, PAS_R_1_6, PAS_V_1_1, PAS_V_2_1, PAS_V_3_1, PAS_V_4_1/
 sFarmType
 sStatistic /GM, std/
+sScen /FC, ref, sc1, sc2, sc3/
+sScenario(sScen)
+sAbatement /animalreduction, AEA/ ;
 ;
 
 $gdxin FarmsFlanders1.gdx
-$load sNIS, sStableType, sID, sAnimalCategory, sSectors_AnimalCategory, sPAS, sFarmType
+$load sNIS, sStableType, sID, sAnimalCategory, sSectors_AnimalCategory, sFarmType, sPAS
 $gdxin
 
 Parameters
@@ -47,10 +57,14 @@ pGM(sFarmType, sAnimalCategory, sStatistic)
 *FarmFlanders2.gdx: seed2 R
 *FarmFlanders3.gdx: seed3 R
 $gdxin FarmsFlanders1.gdx
-$load pAnimals, pLocationImpact, pEmissionFactor, pSourceLocation, pAEAcost, pAEAextracost, pReductionEFPAS, pCostPAS, pGM
+$load pAnimals, pLocationImpact, pEmissionFactor, pSourceLocation, pAEAcost, pReductionEFPAS, pCostPAS, pGM
+$OnEPS
+$load pAEAextracost
 $gdxin
 
-pAEAextracost(sAnimalCategory, sStableType, sCost) = abs(pAEAextracost(sAnimalCategory, sStableType, sCost)) ;
+*pAEAextracost(sAnimalCategory, sStableType, sCost)$(pAEAextracost(sAnimalCategory, sStableType, sCost) = 1E-14) = 10 ;
+
+*pAEAextracost: zero elements are infinitely small
 
 *******************************************************************************
 ********************Misc. Initial Parameters and MultiDsets*********************
@@ -164,9 +178,19 @@ sExploitation_FarmType(sExploitation, 'BeefBulls')  = sExploitation_FarmType(sEx
 
 *LayingHens: laying hens present
 sExploitation_FarmType(sExploitation, 'LayingHens')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a133'))>0) = yes ;
+sExploitation_FarmType(sExploitation, 'LayingHens')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a134'))>0) = yes ;
 
 *Broilers: broiler present
 sExploitation_FarmType(sExploitation, 'Broilers')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a32'))>0) = yes ;
+
+*RearingParentsBroilers
+sExploitation_FarmType(sExploitation, 'RearingParentsBroilers')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a99'))>0) = yes ;
+
+*ParentsBroilers
+sExploitation_FarmType(sExploitation, 'ParentsBroilers')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a98'))>0) = yes ;
+
+*RearingLayingHens
+sExploitation_FarmType(sExploitation, 'RearingLayingHens')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a132'))>0) = yes ;
 
 *Sheep: sheep present
 sExploitation_FarmType(sExploitation, 'Sheep')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a43'))>0) = yes ;
@@ -233,6 +257,7 @@ pAnimalRatio(sExploitation, 'a42', 'a43')$(sExploitation_FarmType(sExploitation,
 = sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a42'))
 / sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a43') ) ;
 
+$ontext
 *LayingHens
 Set sLayingHens(sAnimalCategory) /a132, a134/ ;
 
@@ -246,6 +271,7 @@ Set sBroilers(sAnimalCategory) /a98, a99/ ;
 pAnimalRatio(sExploitation, sBroilers, 'a32')$(sExploitation_FarmType(sExploitation, 'Broilers'))
 = sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sBroilers))
 / sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a32') ) ;
+$offtext
 
 pAnimalRatio(sExploitation, sAnimalCategory, sAnimalCategory2)$(ord(sAnimalCategory) eq ord (sAnimalCategory2)) =   0 ;
 
@@ -268,10 +294,11 @@ sAEA(sAnimalCategory, sStabletype)
 *sInitialStab(sStable, sStableType)
 sPosStab(sStable, sStableType, sAnimalCategory)
 sPossibleStables(sStable, sStableType)
-sOtherAnimals(sAnimalCategory) /a14, a132, a134, a141, a194, a195, a93, a98, a99, a91, a92, a151, a152, a153, a165, a166, a631, a632, a633, a641, a642, a643/
+sOtherAnimals(sAnimalCategory) /a14, a141, a194, a195, a93, a91, a92, a151, a152, a153, a165, a166, a631, a632, a633, a641, a642, a643/
 sOneStableAnimals(sAnimalCategory)  /a14, a141, a194, a195, a93, a91, a92, a151, a152, a153, a165, a166, a631, a632, a633, a641, a642, a643/
 sNEA(sStableType) /TRAD_MENGM, TRAD_STALM, UNKNOWN, BATT_NEA, GRONDH_NEA, BATT_OV, GRONDH_OV, SLK_OV, SLKO_OV, OSLKO_OV/
 sEA(sStableType)
+*sEA(sStableType) /V_1_4, S_2, V_3_4, V_3_5, V_3_6, V_4_6, P_2_1, P_2_3, P_4_5, P_5_1, P_5_4, P_5_5, P_6_3, P_6_5, P_7_5/
 sEligbleStablesAEA(sStable) stables for which choice of AEA can be made (NEA + pigs or poultry)
 sStableChoice(sStable, sStableType) ;
 
@@ -280,19 +307,28 @@ option sAEA <= pAEAextraCost       ;
 sEA(sStableType) = yes ;
 
 sEA(sNEA) = no ;
+*sEA('P_2_1') = no ;
+sEA('P_4_1') = no ;
+sEA('S_1') = no ;
+sEA('P_6_1') = no;
+*sEA('P_6_2') no ;
 
+
+*Only AEA for poultry and pigs
 sEligbleStablesAEA(sStable)   = sum(sSectors, (sum(sAnimalCategory, (sAnimalCategory_Stable(sAnimalCategory, sStable) * sSectors_Animalcategory('Varkens', sAnimalCategory)))
                                     + sum(sAnimalCategory, (sAnimalCategory_Stable(sAnimalCategory, sStable) * sSectors_Animalcategory('Pluimvee', sAnimalCategory)))));
 
+*Only AEA choice when current stable Not AEA
 sEligbleStablesAEA(sStable) = sum(sStableType, (sEligbleStablesAEA(sStable) * sStable_StableType(sStable, sStableType) * sNEA(sStableType))) ;
 
 
-
 *option sInitialStab <= sID ;
+*Option 1: all AEA to choose from
+*sPosStab(sStable, sStableType, sAnimalCategory) =  sAEA(sAnimalCategory, sStableType) * sAnimalCategory_Stable(sAnimalCategory, sStable) ;
+*Option 2: only best AEA to choose from
+sPosStab(sStable, sEA, sAnimalCategory) =  sAEA(sAnimalCategory, sEA) * sAnimalCategory_Stable(sAnimalCategory, sStable) ;
 
-sPosStab(sStable, sStableType, sAnimalCategory) =  sAEA(sAnimalCategory, sStableType) * sAnimalCategory_Stable(sAnimalCategory, sStable) ;
 
-*sPosStab(sStable, sStableType, sAnimalCategory) =  sAnimalCategory_StableType(sAnimalCategory, sStableType) * sAnimalCategory_Stable(sAnimalCategory, sStable) ;
 
 parameter nrAnimals(sStable, sStableType)
           nrAnimals2(sStable, sStableType) used for selection of stables that can house all animal categories present ;
@@ -304,9 +340,9 @@ nrAnimals2(sStable, sStableType)$((iPermittedStable(sStable) = nrAnimals(sStable
 *option sStable_Exploitation <= sID  ;
 option sPossibleStables <=  nrAnimals2 ;
 
-*sPossibleStables(sEligbleStablesAEA(sStable), sStableType) = sPossibleStables(sStable, sStableType) + sStable_StableType(sStable, sStableType) ;
-
+*All stables, including zero cost and current stable
 sStableChoice(sStable, sStableType) = sPossibleStables(sStable, sStableType) + sStable_StableType(sStable, sStableType) ;
+
 
 ********************************************************************************
 ******PAS measures that model can choose****************************************
@@ -357,11 +393,87 @@ pMaxRevenueStable(sStable) = sum(sAnimalCategory, pAnimals(sStable, sAnimalCateg
 *********Fix animals when impact not over threshold*****************************
 ********************************************************************************
 *Exploitations
-Scalar pSStreshold /5/ ;
+Scalar pSSthreshold /5/ ;
+
+Parameter pOtherStables(sStable)
+          pEmissionOthers(sExploitation) exploitations where sum emission others are bigger than threshold
+          pBestEF(sAnimalCategory) best (lowest) EF for each animal category;
+
+pOtherStables(sStable) = sum(sOtherAnimals, pAnimals(sStable, sOtherAnimals)) ;
+
+loop (sAnimalCategory,
+pBestEF(sAnimalCategory) = smin(sAnimalCategory_Stabletype(sAnimalCategory, sStableType), pEmissionFactor(sAnimalCategory, sStableType)) ;
+) ;
+
 
 Set
-sNotFix(sExploitation) ;
+sStable_FarmType(sStable, sFarmType)
+*stables that should be fixed (with slack variable in environmental constraint)
+sFIX(sStable)
+sNotFix(sStable)
+sOther(sStable)
+sAboveThresholdE(sExploitation)
+sAboveThresholdS(sStable);
 
-sNotFix(sExploitation)$((iMaxAmmoniaSource(sExploitation)/5000) * pLocationImpact(sExploitation, 'SS')>pSStreshold) = yes ;
+sStable_FarmType(sStable, sFarmType) = sum(sStable_Exploitation(sStable, sExploitation), sExploitation_FarmType(sExploitation, sFarmType)) ;
+
+option sOther <= pOtherStables            ;
+
+sFix(sStable) = yes;
+
+*sFix(sStable)$(sum(sOtherAnimals, pAnimals(sStable, sOtherAnimals)) = no ;
+
+*sFix(sStable)$(sum
+
+sFix(sStable)$(sum(sFarmType, sStable_FarmType(sStable, sFarmType))) = no ;
+sFix(sStable) = sFix(sStable) + sOther(sStable) ;
+
+sNotFix(sStable) = yes ;
+sNotFix(sFix) = no ;
+*sFIX(sStable)$(not sum((sStable_Exploitation(sStable, sExploitation), sFarmType),sExploitation_FarmType(sExploitation, sFarmType)) = yes ;
+
+pEmissionOthers(sExploitation) = sum((sOtherAnimals, sStable_Exploitation(sFix, sExploitation), sStable_Stabletype(sFIX, sSTableType)), (pAnimals(sFix, sOtherAnimals) * pEmissionFactor(sOtherAnimals, sStableType))) ;
+
+sAboveThresholdE(sExploitation)$((pEmissionOthers(sExploitation)/5000) * pLocationImpact(sExploitation, 'SS')>pSSthreshold) = yes       ;
+
+sAboveThresholdS(sStable)$(sum(sStable_Exploitation(sStable, sExploitation), sAboveThresholdE(sExploitation))) = yes;
+
+sAboveThresholdS(sStable) = sAboveThresholdS(sStable) * sFix(sStable);
+
+*s7125 non-eligble for AEA, but bigger than threshold: exception
+*sAboveThresholdS('s7125') = yes ;
+*sAboveThresholdS('s11426') = yes ;
+
+*sAboveThresholdS(sStable)$(sum((, sStableType), (pAnimals(sFix, sOtherAnimals) * pEmissionFactor(sOtherAnimals, sStableType)))
+*sNotFix(sExploitation)$((iMaxAmmoniaSource(sExploitation)/5000) * pLocationImpact(sExploitation, 'SS')>pSStreshold) = yes ;
+
 
 execute_unloaddi 'SODat.gdx'
+
+********************************************************************************
+*********Declaration reporting variables****************************************
+********************************************************************************
+
+
+
+$ontext
+Parameter
+*modelstats
+dModelStat(sScen)
+dSolveStat(sScen)
+dObjEst(sScen)
+*global
+dSumStableTypes(sScen, sStabletype)
+dPASmeasures(sScen, sPAS)
+dADSregion(sScen)
+dAmmoniaRegion(sScen)
+dProfitRegion(sScen)
+*sector
+
+*exploitation
+dProfitExploitation(sScen, sExploitation)
+*stable
+dAbatementCost(sScen, sExploitation, sStable, sAbatement)
+dAbatementCostAEA(sStable, sStableType)
+;
+$offtext
