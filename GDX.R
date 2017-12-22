@@ -184,8 +184,7 @@ attr(AEAcost, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
 
 AEAextracost <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/AEA.xlsx",
                                       sheet=2))
-#AEAextracost$JaarkostDP <- AEAextracost$JaarkostDP + 5 
-
+#AEAextracost[AEAextracost == 0] <- 10E-15
 AEAextracost <- melt(AEAextracost, id.vars=c("sAnimalCategory", "sStableType"))
  
 colnames(AEAextracost) <- c("i", "j", "k", "value")
