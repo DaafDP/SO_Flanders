@@ -229,23 +229,26 @@ attr(CostPAS, "symName") <-"pCostPAS"
 attr(CostPAS, "domains") <- c("sPAS", "sAnimalCategory", "sCost")
 
 #GrossMargins
-GM <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/GrossMargins.xlsx",
-                                    sheet=1))
+GM <- data.frame(read.csv("GrossMargins.csv"))
+GM$X <- NULL
 
-GM <- GM[,-(6:8)]
+GM <- melt(GM, id.vars = c("sExploitation", "sFarmType", "sAnimalCategory"))
 
-GM <- melt(GM, id.vars = c("FarmType", "jaarplaats", "Diercat"))
-GM$jaarplaats <- NULL
-colnames(GM) <- c("i", "j", "k", "value")
+colnames(GM) <- c("i", "j", "k", "l", "value")
 GM$i <- as.factor(GM$i)
 GM$j <- as.factor(GM$j)
 GM$k <- as.factor(GM$k)
+GM$l <- as.factor(GM$l)
 attr(GM, "symName") <- "pGM"
-attr(GM, "domains") <- c("sFarmType", "sAnimalCategory", "sStatistic")
+attr(GM, "domains") <- c("sExploitation", "sFarmType", "sAnimalCategory", "sStatistic")
 
-sFarmType <- as.data.frame(unique(GM$i))
+sFarmType <- as.data.frame(unique(GM$j))
 colnames(sFarmType) <- "i"
 attr(sFarmType, "symName") <- "sFarmType"
+
+sStatistic<- as.data.frame(unique(GM$l))
+colnames(sStatistic) <- "i"
+attr(sStatistic, "symName") <- "sStatistic"
 
 #Bundling all data in gdx-file
 Directoryname <- paste("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/GAMS/FarmsFlanders", 
@@ -253,6 +256,6 @@ Directoryname <- paste("C:/Users/ddpue/Documents/Werk/Spatial Optimization Fland
 wgdx.lst(Directoryname,  Location, LocationImpact, sID, Stable, Exploitation,
                 AnimalCategory, NIS, Farmer, StableType,
                    Animals, EmissionFactor, Sector, AEAcost, AEAextracost, ReductionEFPAS, CostPAS, GM,
-         sPAS, sFarmType, squeeze=FALSE)
+         sPAS, sFarmType, sStatistic, squeeze=FALSE)
 
 }
