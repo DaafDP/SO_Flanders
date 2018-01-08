@@ -7,6 +7,9 @@ setwd("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataHandling_
 #Loading data 
 EMAV <- read.csv("EMAV.csv")
 
+
+#test
+
 #Packages and GAMS directory
 library(gdxrrw)
 library(reshape2)
