@@ -2,12 +2,14 @@
 *=======================Data preprocessing and data input=======================
 *===============================================================================
 Set
+*sStable /s1/
+*sExploitation /e1/
 *sStable /s117*s173/
 *sExploitation /e74*e100/
-*sStable /s1*s173/
-*sExploitation /e1*e100/
-sStable/s1*s3655/
-sExploitation/e1*e2000/
+sStable /s1*s173/
+sExploitation /e1*e100/
+*sStable/s1*s3655/
+*sExploitation/e1*e2000/
 *sStable/s1*s7181/
 *sExploitation/e1*e4000/
 *sStable/s7182*s14428/
@@ -30,16 +32,18 @@ sSectors_AnimalCategory(sSectors, sAnimalCategory)
 sCost /InvPerDP, JaarKostDP/
 sPAS
 *sPAS /PAS_R_1_13, PAS_R_1_6, PAS_V_1_1, PAS_V_2_1, PAS_V_3_1, PAS_V_4_1/
-sFarmType
-sStatistic /GM, std/
+sFarmType /Dairy, ClosedBeef, BeefBulls, Sheep, PigRearing, LayingHens, PigFattening, ClosedPigFattening,
+Broilers, ParentsBroilers, RearingLayingHens, RearingParentsBroilers, Goats, FatteningCalves, Turkeys/
+sStatistic
 sScen /FC, ref, sc1, sc2, sc3/
 sScenario(sScen)
 sAbatement /animalreduction, AEA/ ;
 ;
 
 $gdxin FarmsFlanders1.gdx
-$load sNIS, sStableType, sID, sAnimalCategory, sSectors_AnimalCategory, sFarmType, sPAS
+$load sNIS, sStableType, sID, sAnimalCategory, sSectors_AnimalCategory, sPAS, sStatistic
 $gdxin
+
 
 Parameters
 pAnimals(sStable, sAnimalCategory)
@@ -50,14 +54,14 @@ pAEAcost(sAnimalCategory, sStableType,  sCost)
 pAEAextracost(sAnimalCategory, sStableType, sCost)
 pReductionEFPAS(sPAS, sAnimalCategory)
 pCostPAS(sPAS, sAnimalCategory, sCost)
-pGM(sFarmType, sAnimalCategory, sStatistic)
+pGM(sExploitation, sFarmType, sAnimalCategory, sStatistic)
 ;
 
 *FarmFlanders.gdx: seed 1 R (allocation sources)
 *FarmFlanders2.gdx: seed2 R
 *FarmFlanders3.gdx: seed3 R
 $gdxin FarmsFlanders1.gdx
-$load pAnimals, pLocationImpact, pEmissionFactor, pSourceLocation, pAEAcost, pReductionEFPAS, pCostPAS, pGM
+$load pAnimals, pLocationImpact, pEmissionFactor, pSourceLocation, pAEAcost, pGM, pReductionEFPAS, pCostPAS
 $OnEPS
 $load pAEAextracost
 $gdxin
@@ -65,7 +69,6 @@ $gdxin
 *pAEAextracost(sAnimalCategory, sStableType, sCost)$(pAEAextracost(sAnimalCategory, sStableType, sCost) = 1E-14) = 10 ;
 
 *pAEAextracost: zero elements are infinitely small
-
 *******************************************************************************
 ********************Misc. Initial Parameters and MultiDsets*********************
 ********************************************************************************
@@ -141,22 +144,32 @@ Else
 ) ;
 
 ********************************************************************************
-*******************************Defining Farmtype per stable*********************
+*******************************Defining Farmtype per exploitation***************
 ********************************************************************************
 set sExploitation_FarmType(sExploitation, sFarmType) ;
 
 parameter pNumberofFarmsperFarmType(sFarmType) ;
 
+*Allocation should only be done once
+*option sExploitation_FarmType <= pGM ;
+*$ontext
 *Closed PigFattening: first select all farms with both fattening pigs and sows
-*Then keep farms with ratio sows/fatteningpigs > 0.25
+*Then keep farms with ratio a124/a123 between 22.5 and 37.5
 sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a123'))>0)  = yes ;
 sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a125'))=0)  = no ;
 sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a124'))=0)  = no ;
 
-sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$((sum(sStable_Exploitation(sStable, sExploitation), (pAnimals(sStable, 'a123') + pAnimals(sStable, 'a125')))
-                                                                      / sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a124')))<0.25 ) = no ;
+*sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a124'))/
+*sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a123')) > 37.5) = no ;
 
-*pNumberofFarmersperFarmType('ClosedPigFattening') = card(sExploitation_FarmType(sExploitation, 'ClosedPigFattening')) ;
+*sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a124'))/
+*sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a123')) < 22.5) = no ;
+
+sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$((sum(sStable_Exploitation(sStable, sExploitation), (pAnimals(sStable, 'a123') + pAnimals(sStable, 'a125')))
+/ sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a124')))<0.2 ) = no ;
+
+sExploitation_FarmType(sExploitation, 'ClosedPigFattening')$((sum(sStable_Exploitation(sStable, sExploitation), (pAnimals(sStable, 'a123') + pAnimals(sStable, 'a125')))
+/ sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a124')))>(1/3)) = no ;
 
 *PigRearing: farms with sows, but not closed pigfattening
 sExploitation_FarmType(sExploitation, 'PigRearing')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a123'))>0)  = yes ;
@@ -192,11 +205,70 @@ sExploitation_FarmType(sExploitation, 'ParentsBroilers')$(sum(sStable_Exploitati
 *RearingLayingHens
 sExploitation_FarmType(sExploitation, 'RearingLayingHens')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a132'))>0) = yes ;
 
-*Sheep: sheep present
+*Sheep: adult sheep present
 sExploitation_FarmType(sExploitation, 'Sheep')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a43'))>0) = yes ;
+
+*Goats: adults Goats present
+sExploitation_FarmType(sExploitation, 'Goats')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a165'))>0) = yes ;
+
+*FatteningCalves: FatteningCalves present
+sExploitation_FarmType(sExploitation, 'FatteningCalves')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a14'))>0) = yes ;
+
+*Turkeys: turkeys present
+sExploitation_FarmType(sExploitation, 'Turkeys')$(sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a92'))>0) = yes ;
+
+*$offtext
 
 pNumberofFarmsperFarmType(sFarmType) = sum(sExploitation_FarmType(sExploitation, sFarmType), 1) ;
 
+
+
+********************************************************************************
+*****************************Defining animal groups per farm type***************
+********************************************************************************
+set sFarmType_AnimalCategory(sFarmType, sAnimalCategory)
+    /Dairy.a1131
+     ClosedBeef. a1132
+     BeefBulls.a117
+     ClosedPigFattening.(a123,a125)
+     PigFattening.a124
+     PigRearing.(a123,a125)
+     Sheep.a43
+     LayingHens.(a133, a134)
+     RearingLayingHens.a132
+     Broilers.a32
+     RearingParentsBroilers.a99
+     ParentsBroilers.a98
+     Turkeys.a92
+     Goats.a165
+     FatteningCalves.a14
+     /
+
+Parameter
+pAnimalExploitation(sExploitation, sAnimalCategory) ;
+
+pAnimalExploitation(sExploitation, sAnimalCategory) = sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sAnimalCategory)) ;
+
+*Exploitations with overlapping activities
+Sets
+sExploitationPigFattening_PigRearing(sExploitation)
+sExploitationDairy_ClosedBeef(sExploitation)
+sExploitationsNoOverlap(sExploitation)
+;
+
+sExploitationPigFattening_PigRearing(sExploitation)$(sExploitation_FarmType(sExploitation, 'PigFattening')
+and sExploitation_FarmType(sExploitation, 'PigRearing')) = yes ;
+
+sExploitationDairy_ClosedBeef(sExploitation)$(sExploitation_FarmType(sExploitation, 'Dairy')
+and sExploitation_FarmType(sExploitation, 'ClosedBeef')) = yes ;
+
+sExploitationsNoOverlap(sExploitation) = yes ;
+sExploitationsNoOverlap(sExploitation)$(sExploitationDairy_ClosedBeef(sExploitation)) = no ;
+sExploitationsNoOverlap(sExploitation)$(sExploitationPigFattening_PigRearing(sExploitation)) = no ;
+
+
+
+*$ontext
 ********************************************************************************
 *****************************Fix animal ratios depending on sector**************
 ********************************************************************************
@@ -204,10 +276,7 @@ pNumberofFarmsperFarmType(sFarmType) = sum(sExploitation_FarmType(sExploitation,
 alias(sAnimalCategory, sAnimalCategory2) ;
 
 Parameter pAnimalRatio(sExploitation, sAnimalCategory, sAnimalCategory2)
-          pAnimalExploitation(sExploitation, sAnimalCategory) ;
-
-
-pAnimalExploitation(sExploitation, sAnimalCategory) = sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sAnimalCategory)) ;
+;
 
 **Cattle
 Set sYoungCattle(sAnimalCategory) /a111, a112, a115, a116, a117/
@@ -237,15 +306,19 @@ pAnimalRatio(sExploitation, sYoungCattle, 'a117')$(sExploitation_FarmType(sExplo
 **Pigs
 Set sPigs(sAnimalCategory) /a121*a125/     ;
 
+Set sOtherPigs(sAnimalCategory) /a121, a122/
+    sAdultPigs(sAnimalCategory) /a123*a125/
+;
+
 *ClosedPigFattening
 pAnimalRatio(sExploitation, sPigs, 'a124')$(sExploitation_FarmType(sExploitation, 'ClosedPigFattening'))
 = sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sPigs))
 / sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a124') ) ;
 
 *PigRearing or combination Pig Rearing/Pig Fattening
-pAnimalRatio(sExploitation, sPigs, 'a123')$(sExploitation_FarmType(sExploitation, 'PigRearing'))
-= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sPigs))
-/ sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a123') ) ;
+pAnimalRatio(sExploitation, sOtherPigs, sAdultPigs)$(sExploitation_FarmType(sExploitation, 'PigRearing'))
+= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sOtherPigs))
+/ sum(sStable_Exploitation(sStable, sExploitation), (pAnimals(sStable, 'a123') + pAnimals(sStable, 'a124') + pAnimals(sStable, 'a125'))) ;
 
 *Exclusive PigFattening
 pAnimalRatio(sExploitation, sPigs, 'a124')$(not sExploitation_FarmType(sExploitation, 'PigRearing') and sExploitation_FarmType(sExploitation, 'PigFattening'))
@@ -257,34 +330,71 @@ pAnimalRatio(sExploitation, 'a42', 'a43')$(sExploitation_FarmType(sExploitation,
 = sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a42'))
 / sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a43') ) ;
 
+*Goats
+pAnimalRatio(sExploitation, 'a166', 'a165')$(sExploitation_FarmType(sExploitation, 'Goats'))
+= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a166'))
+/ sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a165') ) ;
+
+*Turkeys
+pAnimalRatio(sExploitation, 'a91', 'a92')$(sExploitation_FarmType(sExploitation, 'Turkeys'))
+= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a91'))
+/ sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a92') ) ;
+
 $ontext
 *LayingHens
-Set sLayingHens(sAnimalCategory) /a132, a134/ ;
+Set sLayingHens(sAnimalCategory) /a133, a134/ ;
 
-pAnimalRatio(sExploitation, sLayingHens, 'a133')$(sExploitation_FarmType(sExploitation, 'LayingHens'))
-= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sLayingHens))
+pAnimalRatio(sExploitation, 'a134', 'a133')$(sExploitation_FarmType(sExploitation, 'LayingHens'))
+= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a134'))
 / sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a133') ) ;
 
 *Broilers
-Set sBroilers(sAnimalCategory) /a98, a99/ ;
+*Set sBroilers(sAnimalCategory) /a98, a99/ ;
 
-pAnimalRatio(sExploitation, sBroilers, 'a32')$(sExploitation_FarmType(sExploitation, 'Broilers'))
-= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sBroilers))
-/ sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a32') ) ;
+*pAnimalRatio(sExploitation, sBroilers, 'a32')$(sExploitation_FarmType(sExploitation, 'Broilers'))
+*= sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, sBroilers))
+*/ sum(sStable_Exploitation(sStable, sExploitation), pAnimals(sStable, 'a32') ) ;
 $offtext
 
 pAnimalRatio(sExploitation, sAnimalCategory, sAnimalCategory2)$(ord(sAnimalCategory) eq ord (sAnimalCategory2)) =   0 ;
+*$offtext
+
+*
+Set sAnimalRatio(sExploitation, sAnimalCategory, sAnimalCategory2)
+    sFarmType_animalsExtended(sFarmType, sAnimalCategory)
+    /Dairy.(a111, a112, a115, a116, a117, a1131)
+     ClosedBeef.(a111, a112, a115, a116, a117, a1132)
+     BeefBulls.(a111, a112, a115, a116, a117)
+     ClosedPigFattening.(a121*a125)
+     PigRearing.(a121, a122, a123, a125)
+     PigFattening.(a121, a122, a124)
+     Sheep.(a42*a43)
+     LayingHens(
+/
+
+sSector_FarmType(sSectors, sFarmType)
+    /Runderen.(Dairy, ClosedBeef, BeefBulls, FatteningCalves)
+     Varkens.(PigFattening, PigRearing, ClosedPigFattening)
+     Pluimvee.(LayingHens, Broilers, ParentsBroilers, RearingLayingHens, RearingParentsBroilers, Turkeys)
+     Andere.(Sheep, Goats)/ ;
+
+
+
+option sAnimalRatio <= pAnimalRatio ;
+
+
+
 
 ********************************************************************************
 *****************************Gross Margin from normal distribution**************
 ********************************************************************************
-Parameter pGrossMargin(sExploitation, sAnimalCategory), pMaxProfit(sExploitation)     ;
+Parameter pGrossMargin(sExploitation, sAnimalCategory) ;
 
-pGrossMargin(sExploitation, sAnimalCategory)$(pAnimalExploitation(sExploitation, sAnimalCategory) > 0)= sum(sExploitation_FarmType(sExploitation, sFarmType), normal(pGM(sFarmType, sAnimalCategory, 'GM'), pGM(sFarmType, sAnimalCategory, 'std')))
+pGrossMargin(sExploitation, sAnimalCategory)= sum(sFarmType, pGM(sExploitation, sFarmType, sAnimalCategory, 'GM'))
 ;
 
-pGrossMargin(sExploitation, 'a125')$((pGrossMargin(sExploitation, 'a125') > 0)) = pGrossMargin(sExploitation, 'a123')         ;
-
+pGrossMargin(sExploitation, 'a123')$((pGrossMargin(sExploitation, 'a125') > 0)) = pGrossMargin(sExploitation, 'a125')         ;
+pGrossMargin(sExploitation, 'a134')$((pGrossMargin(sExploitation, 'a133') > 0)) = pGrossMargin(sExploitation, 'a133')         ;
 
 ********************************************************************************
 ***********Stables that model can choose: initial stable + stable with cost info
@@ -294,7 +404,7 @@ sAEA(sAnimalCategory, sStabletype)
 *sInitialStab(sStable, sStableType)
 sPosStab(sStable, sStableType, sAnimalCategory)
 sPossibleStables(sStable, sStableType)
-sOtherAnimals(sAnimalCategory) /a14, a141, a194, a195, a93, a91, a92, a151, a152, a153, a165, a166, a631, a632, a633, a641, a642, a643/
+sOtherAnimals(sAnimalCategory) /a141, a194, a195, a93, a151, a152, a153, a631, a632, a633, a641, a642, a643/
 sOneStableAnimals(sAnimalCategory)  /a14, a141, a194, a195, a93, a91, a92, a151, a152, a153, a165, a166, a631, a632, a633, a641, a642, a643/
 sNEA(sStableType) /TRAD_MENGM, TRAD_STALM, UNKNOWN, BATT_NEA, GRONDH_NEA, BATT_OV, GRONDH_OV, SLK_OV, SLKO_OV, OSLKO_OV/
 sEA(sStableType)
@@ -308,9 +418,9 @@ sEA(sStableType) = yes ;
 
 sEA(sNEA) = no ;
 *sEA('P_2_1') = no ;
-sEA('P_4_1') = no ;
-sEA('S_1') = no ;
-sEA('P_6_1') = no;
+*sEA('P_4_1') = no ;
+*sEA('S_1') = no ;
+*sEA('P_6_1') = no;
 *sEA('P_6_2') no ;
 
 
@@ -392,6 +502,7 @@ pMaxRevenueStable(sStable) = sum(sAnimalCategory, pAnimals(sStable, sAnimalCateg
 ********************************************************************************
 *********Fix animals when impact not over threshold*****************************
 ********************************************************************************
+*$ontext
 *Exploitations
 Scalar pSSthreshold /5/ ;
 
@@ -447,6 +558,7 @@ sAboveThresholdS(sStable) = sAboveThresholdS(sStable) * sFix(sStable);
 *sAboveThresholdS(sStable)$(sum((, sStableType), (pAnimals(sFix, sOtherAnimals) * pEmissionFactor(sOtherAnimals, sStableType)))
 *sNotFix(sExploitation)$((iMaxAmmoniaSource(sExploitation)/5000) * pLocationImpact(sExploitation, 'SS')>pSStreshold) = yes ;
 
+*$offtext
 
 execute_unloaddi 'SODat.gdx'
 
