@@ -206,7 +206,7 @@ attr(AEAextracost, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
 PAS <-  data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/DataKWIN_Stalsystemen_PASlijst_AEAlijst.xlsx",
                               sheet=2))
 
-PAS <- PAS[,c(4,5,7,8,10)]
+PAS <- PAS[,c(4,5,7,9,11)]
 PAS <- na.omit(PAS)
 
 ReductionEFPAS <- PAS[,c(1:3)]
@@ -228,6 +228,7 @@ colnames(CostPAS) <- c("i", "j", "k", "value")
 CostPAS$i <- as.factor(CostPAS$i)
 CostPAS$j <- as.factor(CostPAS$j)
 CostPAS$k <- as.factor(CostPAS$k)
+CostPAS$value <- as.numeric(CostPAS$value)
 attr(CostPAS, "symName") <-"pCostPAS"
 attr(CostPAS, "domains") <- c("sPAS", "sAnimalCategory", "sCost")
 
