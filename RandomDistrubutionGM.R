@@ -11,14 +11,19 @@ set.seed(1)
 Ex_FT$zscore <- rnorm(n=nrow(Ex_FT), mean = 0, sd=1)
 Ex_FT$percentile <- pnorm(Ex_FT$zscore)
 
-AMS <- read.xlsx("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/GegevensAMS_versie2.xlsx", sheetIndex = 1)
+AMS <- read.xlsx("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/GegevensAMS_versie3.xlsx", sheetIndex = 1)
 AMS <- subset(AMS, Titel == 3000)
 
-AMSbenaming <- c("Melkkoeien", "Gesloten vleesveehouderij", "Fokvarkens", 
-                 "Vleesvarkens", "Gesloten varkenshouderij", "Legpluimvee", "Slachtpluimvee")
+AMS <- subset(AMS, Deler %in% c("D111", "D112", "D113", "D114", "D115", "D116", "D118", "D119", "D122"))
+
+AMSbenaming <- c("Melkvee (incl jongvee)", "Gesloten vleesveehouderij", "Fokvarkens", 
+                 "Vleesvarkens", "Gesloten varkenshouderij", "Legpluimvee", "Slachtpluimvee", "SREK224")
 Sectors <- c("Dairy", "ClosedBeef", "PigRearing", 
-             "PigFattening", "ClosedPigFattening", "LayingHens", "Broilers")
+             "PigFattening", "ClosedPigFattening", "LayingHens", "Broilers", "BeefBulls")
 AMS$Rekening <- mgsub(AMSbenaming, Sectors, AMS$Rekening)
+
+AMS[which(AMS$Rekening %in% c("LayingHens", "Broilers")),c("Waarde_RG", "Waarde_STDEV")] <- 
+        AMS[which(AMS$Rekening %in% c("LayingHens", "Broilers")),c("Waarde_RG", "Waarde_STDEV")]/100
 
 #Take assigned z-score to find gross margin for expoloitation x in year y. 
 #Then, take average for all years
@@ -38,9 +43,9 @@ Ex_FT$GM <- apply(Ex_FT, 1, function(x){
 Ex_FT[which(Ex_FT$sFarmType == "Sheep"), "GM"] <- 
        111.25 +  Ex_FT[which(Ex_FT$sFarmType == "Sheep"), "zscore"] * 37.08333333
 
-#BeefBulls: old AMS
-Ex_FT[which(Ex_FT$sFarmType == "BeefBulls"), "GM"] <- 
-362 +  Ex_FT[which(Ex_FT$sFarmType == "BeefBulls"), "zscore"] * 120.6666667
+# #BeefBulls: old AMS
+# Ex_FT[which(Ex_FT$sFarmType == "BeefBulls"), "GM"] <- 
+# 362 +  Ex_FT[which(Ex_FT$sFarmType == "BeefBulls"), "zscore"] * 120.6666667
 
 #RearingLayingHens: KWIN 2017-2018
 Ex_FT[which(Ex_FT$sFarmType == "RearingLayingHens"), "GM"] <- 

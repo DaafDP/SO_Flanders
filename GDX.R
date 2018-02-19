@@ -4,18 +4,17 @@ rm(list=ls())
 
 setwd("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataHandling_VLM/")
 
-#Loading data 
-EMAV <- read.csv("EMAV.csv")
-
-
-#test
-
 #Packages and GAMS directory
 library(gdxrrw)
 library(reshape2)
 library(plyr)
 library(readxl)
+library(xlsx)
 igdx("C:/GAMS/win64/24.6/")
+
+#Loading data 
+EMAV <- read.xlsx("EMAV2.xlsx", sheetIndex=1)
+EMAV$NA. <- NULL
 
 #Loop through 3 seeds (cfr Coupling_Data_Locations)
 
@@ -118,8 +117,9 @@ EmissionFactor$STALCODE <- gsub(".", "_", EmissionFactor$STALCODE,  fixed = TRUE
 EmissionFactor$STALCODE <- gsub("-", "_", EmissionFactor$STALCODE, fixed= TRUE)
 
 #Air Scrubber and "GEEN"
-EF_Other <- read.csv("EmissieOverig.csv")
+EF_Other <- read.xlsx("EmissieOverig.xlsx", sheetIndex = 1)
 EF_Other$Opmerking <- NULL
+EF_Other$NA. <- NULL
 EmissionFactor <- rbind(EmissionFactor, EF_Other)
 EmissionFactor$STALCODE[EmissionFactor$STALCODE == "GEEN"] <- "UNKNOWN"
 EmissionFactor$STALCODE <- sub("S_1_MENGM", "S_1", EmissionFactor$STALCODE)
@@ -187,7 +187,7 @@ attr(AEAcost, "domains") <- c("sAnimalCategory", "sStableType",  "sCost")
 
 AEAextracost <- data.frame(read_excel("C:/Users/ddpue/Documents/Werk/Spatial Optimization Flanders/DataEconomic/AEA.xlsx",
                                       sheet=2))
-#AEAextracost[AEAextracost == 0] <- 10E-15
+AEAextracost <- AEAextracost[,c(1:3)]
 AEAextracost <- melt(AEAextracost, id.vars=c("sAnimalCategory", "sStableType"))
  
 colnames(AEAextracost) <- c("i", "j", "k", "value")
